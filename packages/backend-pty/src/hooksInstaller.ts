@@ -18,7 +18,7 @@ export const CODESENSE_HOOK_EVENTS = [
   'Notification',
   'SubagentStart',
   'SubagentStop',
-  'SubagentComplete',
+  'TaskCompleted',
 ] as const;
 
 const MARKER = 'codesense-events';

@@ -25,9 +25,9 @@ const KIND_MAP: Record<string, AgentEvent['kind']> = {
   PreCompact: 'compact',
   PostCompact: 'compact',
   SubagentStart: 'subagent-start',
-  // both names seen across Claude Code versions
   SubagentStop: 'subagent-end',
-  SubagentComplete: 'subagent-end',
+  // background task finished → same "glance-free" haptic as Notification
+  TaskCompleted: 'notification',
 };
 
 export function defaultEventsFile(): string {
