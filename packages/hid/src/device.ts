@@ -232,8 +232,12 @@ export class DeviceManager extends TypedEmitter<DeviceManagerEvents> {
       this.active = device;
       this.emit('attach', { device });
     } catch (err) {
+      const hint =
+        process.platform === 'linux'
+          ? 'missing udev rule? see assets/70-codesense-dualsense.rules'
+          : 'is Steam Input or DS4Windows holding it?';
       this.emit('error', {
-        message: `failed to open ${pick.product}: ${String(err)} (is Steam Input or DS4Windows holding it?)`,
+        message: `failed to open ${pick.product}: ${String(err)} (${hint})`,
       });
     }
   }

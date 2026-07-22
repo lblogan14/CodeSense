@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import { existsSync as fsExistsSync } from 'node:fs';
 import * as clack from '@clack/prompts';
 import pc from 'picocolors';
 import { findDualSenseDevices } from '@codesense/hid';
@@ -64,14 +65,17 @@ export async function runDoctor(): Promise<number> {
       name: 'hid contention',
       run: () => {
         try {
-          const out = execSync('tasklist /fo csv', { encoding: 'utf8', timeout: 15000 });
-          const fighters = ['DS4Windows', 'DualSenseX', 'steam.exe']
-            .filter((p) => out.toLowerCase().includes(p.toLowerCase()));
+          const out =
+            process.platform === 'win32'
+              ? execSync('tasklist /fo csv', { encoding: 'utf8', timeout: 15000 })
+              : execSync('ps -A -o comm=', { encoding: 'utf8', timeout: 15000 });
+          const fighters = ['DS4Windows', 'DualSenseX', 'steam.exe', 'steam', 'ds4drv']
+            .filter((p) => out.toLowerCase().split(/\r?\n/).some((l) => l.includes(p.toLowerCase())));
           if (fighters.length) {
             return {
               ok: true,
               warn: true,
-              detail: `running: ${fighters.join(', ')}`,
+              detail: `running: ${[...new Set(fighters)].join(', ')}`,
               fix: 'these can fight CodeSense for the controller — disable their PS5 support while codesense runs',
             };
           }
@@ -81,6 +85,32 @@ export async function runDoctor(): Promise<number> {
         }
       },
     },
+    ...(process.platform === 'linux'
+      ? [
+          {
+            name: 'udev rules',
+            run: () => {
+              const paths = [
+                '/etc/udev/rules.d/70-codesense-dualsense.rules',
+                '/usr/lib/udev/rules.d/70-codesense-dualsense.rules',
+              ];
+              const found = paths.find((p) => {
+                try {
+                  return fsExistsSync(p);
+                } catch {
+                  return false;
+                }
+              });
+              return {
+                ok: Boolean(found),
+                warn: !found,
+                detail: found ?? 'no DualSense udev rule found — hidraw may need root',
+                fix: 'sudo cp assets/70-codesense-dualsense.rules /etc/udev/rules.d/ && sudo udevadm control --reload',
+              };
+            },
+          } satisfies Check,
+        ]
+      : []),
     {
       name: 'claude hooks',
       run: () => {
