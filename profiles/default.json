@@ -130,7 +130,7 @@
           "action": {
             "type": "replay-status"
           },
-          "label": "Replay status (haptic + LED)"
+          "label": "Replay status (tap) · radial menu (hold + flick stick)"
         },
         "touchpad.swipeLeft": {
           "action": {
@@ -193,6 +193,34 @@
             "action": "pushEnd"
           },
           "label": "Push-to-talk stop"
+        },
+        "radial.up": {
+          "action": {
+            "type": "slash",
+            "command": "/code-review"
+          },
+          "label": "Radial ↑ review changes"
+        },
+        "radial.right": {
+          "action": {
+            "type": "slash",
+            "command": "/compact"
+          },
+          "label": "Radial → compact context"
+        },
+        "radial.down": {
+          "action": {
+            "type": "slash",
+            "command": "/usage"
+          },
+          "label": "Radial ↓ usage & cost"
+        },
+        "radial.left": {
+          "action": {
+            "type": "slash",
+            "command": "/diff"
+          },
+          "label": "Radial ← diff viewer"
         }
       }
     },

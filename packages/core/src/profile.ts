@@ -45,6 +45,7 @@ const gestureNames: string[] = [
   'lstick.up', 'lstick.down', 'lstick.left', 'lstick.right',
   'rstick.up', 'rstick.down', 'rstick.left', 'rstick.right',
   'r2.pull', 'l2.pull',
+  'radial.up', 'radial.down', 'radial.left', 'radial.right',
 ];
 
 export const gestureNameSchema = z

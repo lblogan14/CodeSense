@@ -45,6 +45,7 @@ export class SessionManager extends TypedEmitter<SessionManagerEvents> {
       state: s.machine.state,
       lastEventAt: Date.now(),
       label: s.session.label,
+      costUsd: s.session.costUsd,
     }));
   }
 

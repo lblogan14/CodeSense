@@ -132,6 +132,9 @@ export class MappingEngine extends TypedEmitter<MappingEvents> {
         } else if (this.hasBinding(`${name}.hold` as GestureName)) {
           // tap-vs-hold button: press fires on release, hold on timeout
           tracker.pressDeferred = true;
+        } else if (name === 'r3' && this.hasRadialBindings()) {
+          // R3 doubles as the radial-menu modifier: tap fires on release
+          tracker.pressDeferred = true;
         } else {
           this.firePress(name, now);
         }
@@ -325,6 +328,14 @@ export class MappingEngine extends TypedEmitter<MappingEvents> {
     if (!rep.active || rep.dir !== dir) {
       rep.active = true;
       rep.dir = dir;
+      // radial menu: right-stick flick while R3 is held (one-shot, no repeat)
+      const r3 = this.buttons.get('r3')!;
+      if (prefix === 'rstick' && r3.down && !r3.consumed) {
+        r3.consumed = true; // suppress R3's own tap action for this press
+        this.fireGesture(`radial.${dir}` as GestureName);
+        rep.nextFireAt = Number.MAX_SAFE_INTEGER;
+        return;
+      }
       this.fireGesture(`${prefix}.${dir}` as GestureName);
       rep.nextFireAt = now + this.profile.options.repeatDelayMs;
     }
@@ -335,6 +346,13 @@ export class MappingEngine extends TypedEmitter<MappingEvents> {
     if (name.startsWith('dpad')) {
       this.dpadRepeat.set(name, now + this.profile.options.repeatDelayMs);
     }
+  }
+
+  private hasRadialBindings(): boolean {
+    const bindings = this.profile.modes[this._mode]?.bindings ?? {};
+    return ['radial.up', 'radial.down', 'radial.left', 'radial.right'].some(
+      (g) => g in bindings,
+    );
   }
 
   private isChordParticipant(name: ButtonName): boolean {

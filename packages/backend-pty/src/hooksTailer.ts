@@ -139,10 +139,33 @@ export function normalizeHookEvent(
   const sessionId =
     typeof parsed['session_id'] === 'string' ? parsed['session_id'] : undefined;
   const detail =
-    typeof parsed['message'] === 'string'
+    toolInputDetail(parsed['tool_input']) ??
+    (typeof parsed['message'] === 'string'
       ? parsed['message']
       : typeof parsed['stop_reason'] === 'string'
         ? parsed['stop_reason']
-        : undefined;
+        : undefined);
   return { kind, toolName, sessionId, detail, timestamp: Date.now() };
+}
+
+/** Human-readable one-liner of what a tool is about to do. */
+function toolInputDetail(input: unknown): string | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const o = input as Record<string, unknown>;
+  const s =
+    (typeof o['command'] === 'string' && o['command']) ||
+    (typeof o['file_path'] === 'string' && o['file_path']) ||
+    (typeof o['url'] === 'string' && o['url']) ||
+    (typeof o['pattern'] === 'string' && o['pattern']) ||
+    undefined;
+  if (!s) return undefined;
+  return s.length > 120 ? s.slice(0, 117) + '…' : s;
+}
+
+/** Heuristic: does this permission look destructive? Drives the risk haptic. */
+export function looksDestructive(detail: string | undefined): boolean {
+  if (!detail) return false;
+  return /(\brm\b|\brmdir\b|\bdel\b|\brd\b|-rf\b|--force|push\s+-f\b|reset\s+--hard|checkout\s+--|\bformat\b|\bdrop\s+(table|database)\b|\btruncate\b|\bmkfs\b)/i.test(
+    detail,
+  );
 }

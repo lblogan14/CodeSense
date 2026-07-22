@@ -21,7 +21,7 @@ const CONTROL_GESTURES: Record<string, string[]> = {
   l2: ['l2.press', 'l2.release', 'l2.hold', 'l2.pull'],
   r2: ['r2.pull', 'r2.press'],
   lstick: ['lstick.up', 'lstick.down', 'lstick.left', 'lstick.right'],
-  rstick: ['rstick.up', 'rstick.down', 'rstick.left', 'rstick.right'],
+  rstick: ['rstick.up', 'rstick.down', 'rstick.left', 'rstick.right', 'radial.up', 'radial.right', 'radial.down', 'radial.left'],
   touchpad: ['touchpad.swipeLeft', 'touchpad.swipeRight', 'touchpad.swipeUp', 'touchpad.swipeDown'],
   create: ['create.press'],
   options: ['options.press'],
@@ -272,6 +272,22 @@ export default function App() {
                   <span className="mono">{snapshot?.pendingPermission?.toolName ?? 'a tool'}</span>
                   <span className="dim"> — pull R2 on the pad, or:</span>
                 </div>
+                {snapshot?.pendingPermission?.detail && (
+                  <div
+                    className="mono small"
+                    style={{
+                      background: 'var(--bg-base)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      padding: '7px 10px',
+                      marginBottom: 8,
+                      color: 'var(--text-secondary)',
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {snapshot.pendingPermission.detail}
+                  </div>
+                )}
                 <div className="row">
                   <button className="btn amber" onClick={() => send({ type: 'action', action: { type: 'approve', scope: 'once' } })}>
                     approve once <span className="dim">(feather R2)</span>
@@ -320,6 +336,11 @@ export default function App() {
                       <div className="statestrip" style={{ background: s ? STATE_HEX[sState] : 'transparent' }} />
                       <div className="mono small" style={{ color: s ? STATE_HEX[sState] : 'var(--text-muted)' }}>
                         {STATE_ICON[sState]} session {slot}
+                        {s?.costUsd != null && s.costUsd > 0 && (
+                          <span className="dim" style={{ float: 'right' }}>
+                            ${s.costUsd.toFixed(s.costUsd < 0.1 ? 4 : 2)}
+                          </span>
+                        )}
                       </div>
                       <div className="dim small" style={{ marginTop: 3 }}>
                         {s ? (s.label ?? s.cwd ?? sState) : 'empty · L1/R1 to switch'}

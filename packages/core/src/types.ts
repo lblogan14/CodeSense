@@ -178,6 +178,8 @@ export interface SessionInfo {
   state: AgentStateName;
   lastEventAt: number;
   label?: string;
+  /** cumulative session cost in USD (sdk backend) */
+  costUsd?: number;
 }
 
 // ─── Modes & actions ─────────────────────────────────────────────
@@ -221,7 +223,12 @@ export type GestureName =
   | 'rstick.left'
   | 'rstick.right'
   | 'r2.pull' // analog approval pull (state machine handles depth)
-  | 'l2.pull';
+  | 'l2.pull'
+  // radial menu: hold R3, flick the right stick
+  | 'radial.up'
+  | 'radial.down'
+  | 'radial.left'
+  | 'radial.right';
 
 // ─── Daemon-level events (for dashboard / logging) ───────────────
 

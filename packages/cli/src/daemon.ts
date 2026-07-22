@@ -27,6 +27,7 @@ import {
   PtyDispatcher,
   PtySession,
   hooksInstalled,
+  looksDestructive,
 } from '@codesense/backend-pty';
 import { SessionManager } from '@codesense/backend-sdk';
 
@@ -87,7 +88,7 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
   private snapshotTimer: ReturnType<typeof setInterval> | null = null;
   private blinkPhase = false;
   private blinkTimer: ReturnType<typeof setInterval> | null = null;
-  private pendingPermissionDetail: { toolName?: string } | undefined;
+  private pendingPermissionDetail: { toolName?: string; detail?: string } | undefined;
   /** live subagent count (pty mode) → player LEDs */
   private subagentCount = 0;
   /** mode-change LED flash: N flashes signal the new mode */
@@ -170,7 +171,16 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
     this.tailer.on('event', (event) => {
       switch (event.kind) {
         case 'permission-request':
-          this.pendingPermissionDetail = { toolName: event.toolName };
+          this.pendingPermissionDetail = {
+            toolName: event.toolName,
+            detail: event.detail,
+          };
+          if (looksDestructive(event.detail)) {
+            // sharper double-buzz: this approval deserves a look first
+            this.renderer.pulse(1, 0.8, 140);
+            setTimeout(() => this.renderer.pulse(1, 0.8, 140), 220).unref?.();
+            this.log(`⚠ destructive-looking: ${event.detail}`);
+          }
           break;
         case 'subagent-start':
           this.subagentCount++;

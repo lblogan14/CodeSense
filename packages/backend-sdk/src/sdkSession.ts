@@ -44,6 +44,7 @@ export class SdkSession extends TypedEmitter<SdkSessionEvents> {
   private permissionSeq = 0;
   private permission: PermissionResolver | null = null;
   private transcript: { role: string; text: string }[] = [];
+  private _costUsd = 0;
 
   constructor(slot: number, cwd: string, label?: string) {
     super();
@@ -58,6 +59,11 @@ export class SdkSession extends TypedEmitter<SdkSessionEvents> {
 
   get pendingPermission(): PendingPermission | null {
     return this.permission?.pending ?? null;
+  }
+
+  /** cumulative cost across all turns of this session */
+  get costUsd(): number {
+    return this._costUsd;
   }
 
   getTranscript(): { role: string; text: string }[] {
@@ -209,6 +215,7 @@ export class SdkSession extends TypedEmitter<SdkSessionEvents> {
         typeof message['total_cost_usd'] === 'number'
           ? message['total_cost_usd']
           : undefined;
+      if (costUsd != null) this._costUsd = costUsd;
       if (subtype === 'success') {
         this.emit('event', { kind: 'stop', timestamp: Date.now() });
       } else {
