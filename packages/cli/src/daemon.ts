@@ -22,6 +22,7 @@ import {
 } from '@codesense/hid';
 import type { DualSenseLike } from '@codesense/hid';
 import {
+  DEFAULT_DISPATCHER_CONFIG,
   HooksTailer,
   PtyDispatcher,
   PtySession,
@@ -54,6 +55,7 @@ export interface DaemonEvents extends Record<string, unknown> {
   snapshot: DaemonSnapshot;
   palette: PaletteState;
   log: { line: string };
+  transcript: { slot: number; role: 'user' | 'assistant'; text: string };
   'pty-exit': { exitCode: number };
 }
 
@@ -86,6 +88,10 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
   private blinkPhase = false;
   private blinkTimer: ReturnType<typeof setInterval> | null = null;
   private pendingPermissionDetail: { toolName?: string } | undefined;
+  /** live subagent count (pty mode) → player LEDs */
+  private subagentCount = 0;
+  /** mode-change LED flash: N flashes signal the new mode */
+  private modeFlash: { count: number; startedAt: number } | null = null;
 
   constructor(opts: DaemonOptions) {
     super();
@@ -146,6 +152,7 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
     if (this.snapshotTimer) clearInterval(this.snapshotTimer);
     if (this.blinkTimer) clearInterval(this.blinkTimer);
     this.tailer?.stop();
+    this.dispatcher?.dispose();
     this.pty?.kill();
     this.sessions.closeAll();
     this.deviceManager?.stop();
@@ -161,8 +168,25 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
     }
     this.tailer = new HooksTailer();
     this.tailer.on('event', (event) => {
-      if (event.kind === 'permission-request') {
-        this.pendingPermissionDetail = { toolName: event.toolName };
+      switch (event.kind) {
+        case 'permission-request':
+          this.pendingPermissionDetail = { toolName: event.toolName };
+          break;
+        case 'subagent-start':
+          this.subagentCount++;
+          break;
+        case 'subagent-end':
+          this.subagentCount = Math.max(0, this.subagentCount - 1);
+          this.renderer.pulse(0.35, 0.2, 70); // a helper finished
+          break;
+        case 'notification':
+          this.renderer.pulse(0.45, 0.25, 90); // background task update
+          break;
+        case 'stop':
+        case 'session-start':
+        case 'session-end':
+          this.subagentCount = 0;
+          break;
       }
       this.stateMachine.ingest(event);
     });
@@ -174,7 +198,7 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
       args: this.opts.claudeArgs,
       cwd: this.opts.cwd,
     });
-    this.dispatcher = new PtyDispatcher(this.pty);
+    this.dispatcher = this.buildDispatcher(this.pty);
     this.pty.on('exit', ({ exitCode }) => this.emit('pty-exit', { exitCode }));
     this.pty.start();
     this.stateMachine.set('idle');
@@ -200,6 +224,11 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
     this.engine.on('approvalPull', ({ value }) => this.renderer.setApprovalPull(value));
     this.engine.on('mode', ({ mode }) => {
       this.renderer.pulse(0.3, 0.15, 40);
+      // LED flash count signals the mode: AGENT=1, NAV=2, PROMPT=3
+      this.modeFlash = {
+        count: ['AGENT', 'NAV', 'PROMPT'].indexOf(mode) + 1,
+        startedAt: Date.now(),
+      };
       this.log(`mode → ${mode}`);
     });
   }
@@ -223,6 +252,9 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
       this.log(`session ${slot} · waiting for you · ${pending.toolName}`);
       if (slot !== this.sessions.activeSlot) this.renderer.pulse(0.6, 0.4, 120);
     });
+    this.sessions.on('text', ({ slot, text }) => {
+      this.emit('transcript', { slot, role: 'assistant', text });
+    });
     // pty backend: hook events carry tool names for permission display
     // (tailer wiring happens in startPtyBackend)
   }
@@ -238,6 +270,12 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
         // MappingEngine already switched modes; nothing else to do
         return;
       case 'palette':
+        // during a permission dialog, ▢ asks "what am I approving?" —
+        // Claude Code's Ctrl+E toggles the command explanation
+        if (this.currentAgentState() === 'permission' && this.opts.backend === 'pty') {
+          this.dispatcher && (await this.dispatcher.dispatch({ type: 'keys', keys: '\u0005' }));
+          return;
+        }
         this.openPalette(action.palette);
         return;
       case 'macro': {
@@ -287,6 +325,11 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
 
     if (this.opts.backend === 'pty') {
       await this.dispatcher?.dispatch(action);
+      if (action.type === 'dial' && this.dispatcher) {
+        const { index, presets } = this.dispatcher.dial;
+        this.renderer.dialFlash(index / Math.max(1, presets.length - 1));
+        this.log(`dial → ${presets[index]}`);
+      }
     } else {
       // SDK backend: literal text becomes a prompt to the active session
       if (action.type === 'text') {
@@ -299,6 +342,7 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
   promptSdk(slot: number, text: string, cwd?: string): void {
     try {
       this.sessions.prompt(slot, cwd ?? this.opts.cwd, text);
+      this.emit('transcript', { slot, role: 'user', text });
       this.log(`session ${slot} ← prompt (${text.length} chars)`);
     } catch (err) {
       this.log(String(err));
@@ -381,6 +425,10 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
     if (!res.ok) return { ok: false, error: res.error };
     this.profile = res.profile;
     this.engine.setProfile(res.profile);
+    if (this.pty && this.dispatcher) {
+      this.dispatcher.dispose();
+      this.dispatcher = this.buildDispatcher(this.pty); // pick up dialCommands
+    }
     fs.writeFileSync(this.opts.profilePath, JSON.stringify(json, null, 2) + '\n');
     this.log(`profile "${res.profile.name}" applied + saved`);
     return { ok: true };
@@ -389,19 +437,46 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
   // ── render + snapshot ────────────────────────────────────────
 
   private renderTick(): void {
-    // player LEDs: active slot pattern; blink in any slot awaiting permission
+    let mask: number;
     if (this.opts.backend === 'sdk') {
-      let mask = playerLedPattern(this.sessions.activeSlot);
+      // active slot pattern; blink in any slot awaiting permission
+      mask = playerLedPattern(this.sessions.activeSlot);
       const waiting = this.sessions.slotsAwaitingPermission();
       if (waiting.length && this.blinkPhase) {
         for (const slot of waiting) mask |= playerLedPattern(slot);
       }
-      this.renderer.setPlayerLeds(mask);
     } else {
-      this.renderer.setPlayerLeds(playerLedPattern(1));
+      // pty mode: more lights = more live subagents (0 → center anchor)
+      mask =
+        this.subagentCount >= 4
+          ? 0x1f
+          : playerLedPattern(Math.min(4, this.subagentCount + 1));
     }
+
+    // mode-change flash overrides: N 400 ms flashes announce the new mode
+    if (this.modeFlash) {
+      const elapsed = Date.now() - this.modeFlash.startedAt;
+      if (elapsed >= this.modeFlash.count * 400) {
+        this.modeFlash = null;
+      } else {
+        mask = elapsed % 400 < 220 ? 0x1f : 0;
+      }
+    }
+
+    this.renderer.setPlayerLeds(mask);
     this.renderer.setMuteLed(this.engine.mode === 'PROMPT');
     this.device?.setFeedback(this.renderer.frame());
+  }
+
+  private currentAgentState() {
+    return this.opts.backend === 'sdk' ? this.sessions.activeState : this.stateMachine.state;
+  }
+
+  private buildDispatcher(pty: PtySession): PtyDispatcher {
+    return new PtyDispatcher(pty, {
+      ...DEFAULT_DISPATCHER_CONFIG,
+      dialPresets: this.profile.options.dialCommands,
+    });
   }
 
   snapshot(): DaemonSnapshot {

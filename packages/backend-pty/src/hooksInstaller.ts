@@ -16,6 +16,9 @@ export const CODESENSE_HOOK_EVENTS = [
   'Stop',
   'StopFailure',
   'Notification',
+  'SubagentStart',
+  'SubagentStop',
+  'SubagentComplete',
 ] as const;
 
 const MARKER = 'codesense-events';

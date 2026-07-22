@@ -24,6 +24,8 @@ interface ButtonTracker {
   holdFired: boolean;
   /** consumed by a chord — suppress press/release/hold actions */
   consumed: boolean;
+  /** button has a .hold binding: press fires on release (tap) instead */
+  pressDeferred: boolean;
 }
 
 type StickDir = 'up' | 'down' | 'left' | 'right';
@@ -70,7 +72,13 @@ export class MappingEngine extends TypedEmitter<MappingEvents> {
     super();
     this.profile = profile;
     for (const b of BUTTON_NAMES) {
-      this.buttons.set(b, { down: false, downAt: 0, holdFired: false, consumed: false });
+      this.buttons.set(b, {
+        down: false,
+        downAt: 0,
+        holdFired: false,
+        consumed: false,
+        pressDeferred: false,
+      });
     }
   }
 
@@ -121,6 +129,9 @@ export class MappingEngine extends TypedEmitter<MappingEvents> {
         } else if (this.isChordParticipant(name)) {
           // hold the solo press briefly — a chord may still complete
           this.pendingPress.set(name, now + this.chordWindowMs);
+        } else if (this.hasBinding(`${name}.hold` as GestureName)) {
+          // tap-vs-hold button: press fires on release, hold on timeout
+          tracker.pressDeferred = true;
         } else {
           this.firePress(name, now);
         }
@@ -130,11 +141,13 @@ export class MappingEngine extends TypedEmitter<MappingEvents> {
         const pending = this.pendingPress.delete(name);
         if (!tracker.consumed) {
           if (pending) this.firePress(name, now); // quick tap: fire the deferred press
+          else if (tracker.pressDeferred && !tracker.holdFired) this.firePress(name, now);
           if (!tracker.holdFired) {
             this.fireGesture(`${name}.release` as GestureName);
           }
         }
         tracker.consumed = false;
+        tracker.pressDeferred = false;
       }
     }
 
@@ -184,7 +197,12 @@ export class MappingEngine extends TypedEmitter<MappingEvents> {
       }
       if (now >= fireAt) {
         this.pendingPress.delete(name);
-        this.firePress(name, now);
+        // chord window passed — but a hold binding still defers to release
+        if (this.hasBinding(`${name}.hold` as GestureName)) {
+          tracker.pressDeferred = true;
+        } else {
+          this.firePress(name, now);
+        }
       }
     }
 

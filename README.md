@@ -78,21 +78,25 @@ The SDK backend owns up to **4 Claude sessions** mapped to the player LEDs. **L1
 | control | action |
 |---|---|
 | ✕ cross | accept / approve default |
-| ◯ circle | escape / interrupt |
+| ◯ tap | escape / interrupt |
+| **◯ hold** | **rewind — open the checkpoint menu** (Esc Esc), restore with d-pad + ✕ |
 | △ triangle | cycle permission mode (plan / accept-edits) |
-| ▢ square | command palette |
+| ▢ square | command palette · during a permission dialog: explain the command (Ctrl+E) |
 | d-pad | menus & history |
 | L1 / R1 | previous / next session |
 | **R2 (analog)** | **approve permission — pull depth = scope** |
-| L2 (hold) | push-to-talk (Claude Code `/voice`) |
+| **L2 (hold)** | **push-to-talk** — streams key-repeat into Claude Code's `/voice hold` dictation |
 | left stick | scroll |
-| right stick ↑↓ | reasoning dial (model presets) |
+| right stick ↑↓ | **reasoning dial** — steps `/effort low → max`; lightbar brightness shows the level |
 | R3 | replay status (haptic + LED) |
+| create | `/copy` — copy last response |
 | touchpad swipe → | `/compact` |
 | touchpad swipe ← | type `/clear` (✕ to confirm) |
 | L1+R1+△ chord | `/clear` — deliberate friction |
-| PS | cycle AGENT / NAV / PROMPT modes |
+| PS | cycle AGENT / NAV / PROMPT modes (LEDs flash 1×/2×/3× to confirm) |
 | mute | toggle voice dictation |
+
+And the pad talks back beyond the lightbar: in terminal mode the **player LEDs show live subagent count** (more lights = more agents working under Claude), and a **haptic tap** fires when a background task or subagent finishes while you're looking elsewhere.
 
 Three modes (**AGENT** / **NAV** / **PROMPT**) rebind every control — see the dashboard's mapping explorer, or edit `profiles/default.json` (validated with zod, hot-applied from the dashboard's profile editor).
 

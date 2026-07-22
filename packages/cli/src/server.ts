@@ -89,6 +89,9 @@ export function startServer(daemon: Daemon, port: number): http.Server {
   daemon.on('snapshot', (snapshot) => broadcast({ type: 'snapshot', snapshot }));
   daemon.on('palette', (palette) => broadcast({ type: 'palette', palette }));
   daemon.on('log', ({ line }) => broadcast({ type: 'log', line, at: Date.now() }));
+  daemon.on('transcript', ({ slot, role, text }) =>
+    broadcast({ type: 'transcript', slot, role, text, at: Date.now() }),
+  );
 
   wss.on('connection', (socket) => {
     socket.send(JSON.stringify({ type: 'snapshot', snapshot: daemon.snapshot() }));

@@ -21,7 +21,11 @@ export const actionSchema: z.ZodType<Action> = z.discriminatedUnion('type', [
   z.object({ type: z.literal('dial'), direction: z.enum(['up', 'down']) }),
   z.object({ type: z.literal('palette'), palette: z.string() }),
   z.object({ type: z.literal('macro'), id: z.string() }),
-  z.object({ type: z.literal('voice'), action: z.enum(['toggle', 'push']) }),
+  z.object({
+    type: z.literal('voice'),
+    action: z.enum(['toggle', 'push', 'pushStart', 'pushEnd']),
+  }),
+  z.object({ type: z.literal('rewind') }),
   z.object({ type: z.literal('replay-status') }),
   z.object({ type: z.literal('noop') }),
 ]) as z.ZodType<Action>;
@@ -91,6 +95,11 @@ export const profileSchema = z.object({
       approveArm: z.number().min(0.05).max(0.9).default(0.4),
       approveFull: z.number().min(0.5).max(1).default(0.92),
       approveRelease: z.number().min(0).max(0.5).default(0.15),
+      /** commands stepped through by the reasoning dial, low → high */
+      dialCommands: z
+        .array(z.string())
+        .min(2)
+        .default(['/effort low', '/effort medium', '/effort high', '/effort xhigh', '/effort max']),
     })
     .default({}),
   modes: z.record(

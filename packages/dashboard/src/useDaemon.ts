@@ -6,6 +6,13 @@ export interface LogLine {
   at: number;
 }
 
+export interface TranscriptEntry {
+  slot: number;
+  role: 'user' | 'assistant';
+  text: string;
+  at: number;
+}
+
 export interface DaemonConnection {
   connected: boolean;
   snapshot: DaemonSnapshot | null;
@@ -13,6 +20,7 @@ export interface DaemonConnection {
   profile: unknown | null;
   profileResult: { ok: boolean; error?: string } | null;
   logs: LogLine[];
+  transcripts: TranscriptEntry[];
   send: (msg: Record<string, unknown>) => void;
 }
 
@@ -25,6 +33,7 @@ export function useDaemon(): DaemonConnection {
   const [profile, setProfile] = useState<unknown | null>(null);
   const [profileResult, setProfileResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [logs, setLogs] = useState<LogLine[]>([]);
+  const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -67,6 +76,19 @@ export function useDaemon(): DaemonConnection {
               ),
             );
             break;
+          case 'transcript':
+            setTranscripts((prev) =>
+              [
+                ...prev,
+                {
+                  slot: Number(msg.slot) || 1,
+                  role: msg.role === 'user' ? ('user' as const) : ('assistant' as const),
+                  text: String(msg.text),
+                  at: Number(msg.at) || Date.now(),
+                },
+              ].slice(-400),
+            );
+            break;
         }
       };
     };
@@ -84,5 +106,5 @@ export function useDaemon(): DaemonConnection {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }, []);
 
-  return { connected, snapshot, palette, profile, profileResult, logs, send };
+  return { connected, snapshot, palette, profile, profileResult, logs, transcripts, send };
 }

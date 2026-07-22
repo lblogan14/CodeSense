@@ -10,119 +10,669 @@
     "swipeThreshold": 220,
     "approveArm": 0.4,
     "approveFull": 0.92,
-    "approveRelease": 0.15
+    "approveRelease": 0.15,
+    "dialCommands": [
+      "/effort low",
+      "/effort medium",
+      "/effort high",
+      "/effort xhigh",
+      "/effort max"
+    ]
   },
   "modes": {
     "AGENT": {
       "bindings": {
-        "cross.press": { "action": { "type": "keys", "keys": "\r" }, "label": "Accept / approve default" },
-        "circle.press": { "action": { "type": "interrupt" }, "label": "Escape / interrupt" },
-        "triangle.press": { "action": { "type": "keys", "keys": "\u001b[Z" }, "label": "Cycle permission mode (plan / accept-edits)" },
-        "square.press": { "action": { "type": "palette", "palette": "commands" }, "label": "Command palette" },
-        "dpadUp.press": { "action": { "type": "keys", "keys": "\u001b[A" }, "label": "Up" },
-        "dpadDown.press": { "action": { "type": "keys", "keys": "\u001b[B" }, "label": "Down" },
-        "dpadLeft.press": { "action": { "type": "keys", "keys": "\u001b[D" }, "label": "Left" },
-        "dpadRight.press": { "action": { "type": "keys", "keys": "\u001b[C" }, "label": "Right" },
-        "l1.press": { "action": { "type": "session", "target": "prev" }, "label": "Previous session" },
-        "r1.press": { "action": { "type": "session", "target": "next" }, "label": "Next session" },
-        "l2.hold": { "action": { "type": "voice", "action": "push" }, "label": "Push-to-talk (needs /voice on)" },
-        "lstick.up": { "action": { "type": "keys", "keys": "\u001b[A" }, "label": "Scroll up" },
-        "lstick.down": { "action": { "type": "keys", "keys": "\u001b[B" }, "label": "Scroll down" },
-        "rstick.up": { "action": { "type": "dial", "direction": "up" }, "label": "Reasoning dial up" },
-        "rstick.down": { "action": { "type": "dial", "direction": "down" }, "label": "Reasoning dial down" },
-        "l3.press": { "action": { "type": "keys", "keys": "\f" }, "label": "Redraw screen" },
-        "r3.press": { "action": { "type": "replay-status" }, "label": "Replay status (haptic + LED)" },
-        "touchpad.swipeLeft": { "action": { "type": "macro", "id": "type-clear" }, "label": "Type /clear (press ✕ to confirm)" },
-        "touchpad.swipeRight": { "action": { "type": "slash", "command": "/compact" }, "label": "/compact" },
-        "create.press": { "action": { "type": "keys", "keys": "\u000f" }, "label": "Toggle transcript view" },
-        "options.press": { "action": { "type": "slash", "command": "/config" }, "label": "Open settings" },
-        "ps.press": { "action": { "type": "mode", "mode": "next" }, "label": "Cycle mode" },
-        "mute.press": { "action": { "type": "voice", "action": "toggle" }, "label": "Toggle voice dictation" }
+        "cross.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\r"
+          },
+          "label": "Accept / approve default"
+        },
+        "circle.press": {
+          "action": {
+            "type": "interrupt"
+          },
+          "label": "Escape / interrupt"
+        },
+        "triangle.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[Z"
+          },
+          "label": "Cycle permission mode (plan / accept-edits)"
+        },
+        "square.press": {
+          "action": {
+            "type": "palette",
+            "palette": "commands"
+          },
+          "label": "Command palette · in permission dialog: explain (Ctrl+E)"
+        },
+        "dpadUp.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[A"
+          },
+          "label": "Up"
+        },
+        "dpadDown.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[B"
+          },
+          "label": "Down"
+        },
+        "dpadLeft.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[D"
+          },
+          "label": "Left"
+        },
+        "dpadRight.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[C"
+          },
+          "label": "Right"
+        },
+        "l1.press": {
+          "action": {
+            "type": "session",
+            "target": "prev"
+          },
+          "label": "Previous session"
+        },
+        "r1.press": {
+          "action": {
+            "type": "session",
+            "target": "next"
+          },
+          "label": "Next session"
+        },
+        "lstick.up": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[A"
+          },
+          "label": "Scroll up"
+        },
+        "lstick.down": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[B"
+          },
+          "label": "Scroll down"
+        },
+        "rstick.up": {
+          "action": {
+            "type": "dial",
+            "direction": "up"
+          },
+          "label": "Effort dial up"
+        },
+        "rstick.down": {
+          "action": {
+            "type": "dial",
+            "direction": "down"
+          },
+          "label": "Effort dial down"
+        },
+        "l3.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\f"
+          },
+          "label": "Redraw screen"
+        },
+        "r3.press": {
+          "action": {
+            "type": "replay-status"
+          },
+          "label": "Replay status (haptic + LED)"
+        },
+        "touchpad.swipeLeft": {
+          "action": {
+            "type": "macro",
+            "id": "type-clear"
+          },
+          "label": "Type /clear (press ✕ to confirm)"
+        },
+        "touchpad.swipeRight": {
+          "action": {
+            "type": "slash",
+            "command": "/compact"
+          },
+          "label": "/compact"
+        },
+        "create.press": {
+          "action": {
+            "type": "slash",
+            "command": "/copy"
+          },
+          "label": "Copy last response"
+        },
+        "options.press": {
+          "action": {
+            "type": "slash",
+            "command": "/config"
+          },
+          "label": "Open settings"
+        },
+        "ps.press": {
+          "action": {
+            "type": "mode",
+            "mode": "next"
+          },
+          "label": "Cycle mode"
+        },
+        "mute.press": {
+          "action": {
+            "type": "voice",
+            "action": "toggle"
+          },
+          "label": "Toggle voice dictation"
+        },
+        "circle.hold": {
+          "action": {
+            "type": "rewind"
+          },
+          "label": "Rewind — checkpoint menu (Esc Esc)"
+        },
+        "l2.press": {
+          "action": {
+            "type": "voice",
+            "action": "pushStart"
+          },
+          "label": "Push-to-talk start (needs /voice hold)"
+        },
+        "l2.release": {
+          "action": {
+            "type": "voice",
+            "action": "pushEnd"
+          },
+          "label": "Push-to-talk stop"
+        }
       }
     },
     "NAV": {
       "bindings": {
-        "cross.press": { "action": { "type": "keys", "keys": "\r" }, "label": "Enter / select" },
-        "circle.press": { "action": { "type": "keys", "keys": "\u001b" }, "label": "Back / escape" },
-        "triangle.press": { "action": { "type": "keys", "keys": "\u001b\u001b" }, "label": "Clear input draft" },
-        "square.press": { "action": { "type": "keys", "keys": "\u0012" }, "label": "Search history (Ctrl+R)" },
-        "dpadUp.press": { "action": { "type": "keys", "keys": "\u001b[A" }, "label": "Up" },
-        "dpadDown.press": { "action": { "type": "keys", "keys": "\u001b[B" }, "label": "Down" },
-        "dpadLeft.press": { "action": { "type": "keys", "keys": "\u001b[D" }, "label": "Left" },
-        "dpadRight.press": { "action": { "type": "keys", "keys": "\u001b[C" }, "label": "Right" },
-        "l1.press": { "action": { "type": "keys", "keys": "\u001b[Z" }, "label": "Previous (Shift+Tab)" },
-        "r1.press": { "action": { "type": "keys", "keys": "\t" }, "label": "Next (Tab)" },
-        "l2.hold": { "action": { "type": "keys", "keys": "\u001b[5~" }, "label": "Page up (fast scroll)" },
-        "lstick.up": { "action": { "type": "keys", "keys": "\u001b[A" }, "label": "Scroll up" },
-        "lstick.down": { "action": { "type": "keys", "keys": "\u001b[B" }, "label": "Scroll down" },
-        "lstick.left": { "action": { "type": "keys", "keys": "\u001b[D" }, "label": "Left" },
-        "lstick.right": { "action": { "type": "keys", "keys": "\u001b[C" }, "label": "Right" },
-        "rstick.up": { "action": { "type": "keys", "keys": "\u001b[5~" }, "label": "Page up" },
-        "rstick.down": { "action": { "type": "keys", "keys": "\u001b[6~" }, "label": "Page down" },
-        "r3.press": { "action": { "type": "replay-status" }, "label": "Replay status" },
-        "touchpad.swipeUp": { "action": { "type": "keys", "keys": "\u001b[5~" }, "label": "Page up" },
-        "touchpad.swipeDown": { "action": { "type": "keys", "keys": "\u001b[6~" }, "label": "Page down" },
-        "create.press": { "action": { "type": "keys", "keys": "\u000f" }, "label": "Toggle transcript view" },
-        "options.press": { "action": { "type": "slash", "command": "/status" }, "label": "Session status" },
-        "ps.press": { "action": { "type": "mode", "mode": "next" }, "label": "Cycle mode" }
+        "cross.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\r"
+          },
+          "label": "Enter / select"
+        },
+        "circle.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b"
+          },
+          "label": "Back / escape"
+        },
+        "triangle.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u0014"
+          },
+          "label": "Toggle task checklist (Ctrl+T)"
+        },
+        "square.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u0012"
+          },
+          "label": "Search history (Ctrl+R)"
+        },
+        "dpadUp.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[A"
+          },
+          "label": "Up"
+        },
+        "dpadDown.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[B"
+          },
+          "label": "Down"
+        },
+        "dpadLeft.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[D"
+          },
+          "label": "Left"
+        },
+        "dpadRight.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[C"
+          },
+          "label": "Right"
+        },
+        "l1.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[Z"
+          },
+          "label": "Previous (Shift+Tab)"
+        },
+        "r1.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\t"
+          },
+          "label": "Next (Tab)"
+        },
+        "l2.hold": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[5~"
+          },
+          "label": "Page up (fast scroll)"
+        },
+        "lstick.up": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[A"
+          },
+          "label": "Scroll up"
+        },
+        "lstick.down": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[B"
+          },
+          "label": "Scroll down"
+        },
+        "lstick.left": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[D"
+          },
+          "label": "Left"
+        },
+        "lstick.right": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[C"
+          },
+          "label": "Right"
+        },
+        "rstick.up": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[5~"
+          },
+          "label": "Page up"
+        },
+        "rstick.down": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[6~"
+          },
+          "label": "Page down"
+        },
+        "r3.press": {
+          "action": {
+            "type": "replay-status"
+          },
+          "label": "Replay status"
+        },
+        "touchpad.swipeUp": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[5~"
+          },
+          "label": "Page up"
+        },
+        "touchpad.swipeDown": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[6~"
+          },
+          "label": "Page down"
+        },
+        "create.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u0002"
+          },
+          "label": "Send running task to background (Ctrl+B)"
+        },
+        "options.press": {
+          "action": {
+            "type": "slash",
+            "command": "/status"
+          },
+          "label": "Session status"
+        },
+        "ps.press": {
+          "action": {
+            "type": "mode",
+            "mode": "next"
+          },
+          "label": "Cycle mode"
+        },
+        "circle.hold": {
+          "action": {
+            "type": "rewind"
+          },
+          "label": "Rewind — checkpoint menu"
+        }
       }
     },
     "PROMPT": {
       "bindings": {
-        "cross.press": { "action": { "type": "keys", "keys": "\r" }, "label": "Send prompt" },
-        "circle.press": { "action": { "type": "keys", "keys": "\u001b" }, "label": "Cancel" },
-        "triangle.press": { "action": { "type": "keys", "keys": "\u001b[A" }, "label": "Recall last prompt" },
-        "square.press": { "action": { "type": "palette", "palette": "prompts" }, "label": "Preset prompt palette" },
-        "dpadUp.press": { "action": { "type": "keys", "keys": "\u001b[A" }, "label": "History up" },
-        "dpadDown.press": { "action": { "type": "keys", "keys": "\u001b[B" }, "label": "History down" },
-        "dpadLeft.press": { "action": { "type": "keys", "keys": "\u001b[D" }, "label": "Cursor left" },
-        "dpadRight.press": { "action": { "type": "keys", "keys": "\u001b[C" }, "label": "Cursor right" },
-        "l1.press": { "action": { "type": "session", "target": "prev" }, "label": "Previous session" },
-        "r1.press": { "action": { "type": "session", "target": "next" }, "label": "Next session" },
-        "l2.press": { "action": { "type": "voice", "action": "push" }, "label": "Voice: tap to dictate" },
-        "lstick.left": { "action": { "type": "keys", "keys": "\u001b[D" }, "label": "Cursor left" },
-        "lstick.right": { "action": { "type": "keys", "keys": "\u001b[C" }, "label": "Cursor right" },
-        "touchpad.swipeUp": { "action": { "type": "keys", "keys": "\u001b[A" }, "label": "Prompt history" },
-        "create.press": { "action": { "type": "macro", "id": "save-preset-hint" }, "label": "Save prompt as preset (dashboard)" },
-        "options.press": { "action": { "type": "palette", "palette": "prompts" }, "label": "Manage presets" },
-        "ps.press": { "action": { "type": "mode", "mode": "next" }, "label": "Cycle mode" },
-        "mute.press": { "action": { "type": "voice", "action": "toggle" }, "label": "Toggle voice dictation" }
+        "cross.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\r"
+          },
+          "label": "Send prompt"
+        },
+        "circle.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b"
+          },
+          "label": "Cancel"
+        },
+        "triangle.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[A"
+          },
+          "label": "Recall last prompt"
+        },
+        "square.press": {
+          "action": {
+            "type": "palette",
+            "palette": "prompts"
+          },
+          "label": "Preset prompt palette"
+        },
+        "dpadUp.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[A"
+          },
+          "label": "History up"
+        },
+        "dpadDown.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[B"
+          },
+          "label": "History down"
+        },
+        "dpadLeft.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[D"
+          },
+          "label": "Cursor left"
+        },
+        "dpadRight.press": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[C"
+          },
+          "label": "Cursor right"
+        },
+        "l1.press": {
+          "action": {
+            "type": "session",
+            "target": "prev"
+          },
+          "label": "Previous session"
+        },
+        "r1.press": {
+          "action": {
+            "type": "session",
+            "target": "next"
+          },
+          "label": "Next session"
+        },
+        "l2.press": {
+          "action": {
+            "type": "voice",
+            "action": "pushStart"
+          },
+          "label": "Push-to-talk start"
+        },
+        "lstick.left": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[D"
+          },
+          "label": "Cursor left"
+        },
+        "lstick.right": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[C"
+          },
+          "label": "Cursor right"
+        },
+        "touchpad.swipeUp": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b[A"
+          },
+          "label": "Prompt history"
+        },
+        "create.press": {
+          "action": {
+            "type": "macro",
+            "id": "save-preset-hint"
+          },
+          "label": "Save prompt as preset (dashboard)"
+        },
+        "options.press": {
+          "action": {
+            "type": "palette",
+            "palette": "prompts"
+          },
+          "label": "Manage presets"
+        },
+        "ps.press": {
+          "action": {
+            "type": "mode",
+            "mode": "next"
+          },
+          "label": "Cycle mode"
+        },
+        "mute.press": {
+          "action": {
+            "type": "voice",
+            "action": "toggle"
+          },
+          "label": "Toggle voice dictation"
+        },
+        "l2.release": {
+          "action": {
+            "type": "voice",
+            "action": "pushEnd"
+          },
+          "label": "Push-to-talk stop"
+        }
       }
     }
   },
   "chords": [
     {
-      "buttons": ["l1", "r1", "triangle"],
-      "action": { "type": "slash", "command": "/clear" },
+      "buttons": [
+        "l1",
+        "r1",
+        "triangle"
+      ],
+      "action": {
+        "type": "slash",
+        "command": "/clear"
+      },
       "label": "Clear session (guarded chord)",
       "mode": "*"
     },
     {
-      "buttons": ["l1", "r1", "circle"],
-      "action": { "type": "interrupt" },
+      "buttons": [
+        "l1",
+        "r1",
+        "circle"
+      ],
+      "action": {
+        "type": "interrupt"
+      },
       "label": "Hard interrupt",
       "mode": "*"
     }
   ],
   "palettes": {
     "commands": [
-      { "label": "/compact — compact context", "action": { "type": "slash", "command": "/compact" } },
-      { "label": "/model — switch model", "action": { "type": "text", "text": "/model " } },
-      { "label": "/review — review changes", "action": { "type": "slash", "command": "/review" } },
-      { "label": "/status — session status", "action": { "type": "slash", "command": "/status" } },
-      { "label": "/config — settings", "action": { "type": "slash", "command": "/config" } },
-      { "label": "open Claude menu (/)", "action": { "type": "text", "text": "/" } }
+      {
+        "label": "/compact — compact context",
+        "action": {
+          "type": "slash",
+          "command": "/compact"
+        }
+      },
+      {
+        "label": "/code-review — review the diff",
+        "action": {
+          "type": "slash",
+          "command": "/code-review"
+        }
+      },
+      {
+        "label": "/security-review — security check",
+        "action": {
+          "type": "slash",
+          "command": "/security-review"
+        }
+      },
+      {
+        "label": "/diff — interactive diff viewer",
+        "action": {
+          "type": "slash",
+          "command": "/diff"
+        }
+      },
+      {
+        "label": "/rewind — checkpoint menu",
+        "action": {
+          "type": "rewind"
+        }
+      },
+      {
+        "label": "/fork — fork to background session",
+        "action": {
+          "type": "slash",
+          "command": "/fork"
+        }
+      },
+      {
+        "label": "/resume — session picker",
+        "action": {
+          "type": "slash",
+          "command": "/resume"
+        }
+      },
+      {
+        "label": "/usage — tokens & cost",
+        "action": {
+          "type": "slash",
+          "command": "/usage"
+        }
+      },
+      {
+        "label": "/context — context window",
+        "action": {
+          "type": "slash",
+          "command": "/context"
+        }
+      },
+      {
+        "label": "model picker (Alt+P)",
+        "action": {
+          "type": "keys",
+          "keys": "\u001bp"
+        }
+      },
+      {
+        "label": "fast mode toggle (Alt+O)",
+        "action": {
+          "type": "keys",
+          "keys": "\u001bo"
+        }
+      },
+      {
+        "label": "thinking toggle (Alt+T)",
+        "action": {
+          "type": "keys",
+          "keys": "\u001bt"
+        }
+      },
+      {
+        "label": "open Claude menu (/)",
+        "action": {
+          "type": "text",
+          "text": "/"
+        }
+      }
     ],
     "prompts": [
-      { "label": "Explain this codebase", "action": { "type": "text", "text": "Give me a tour of this codebase: structure, entry points, and how the pieces connect." } },
-      { "label": "Fix failing tests", "action": { "type": "text", "text": "Run the test suite, find the failures, and fix them." } },
-      { "label": "Continue where we left off", "action": { "type": "text", "text": "Continue where we left off." } },
-      { "label": "Write tests for last change", "action": { "type": "text", "text": "Write tests covering the change you just made." } },
-      { "label": "Commit my work", "action": { "type": "text", "text": "Commit the current changes with a good message." } }
+      {
+        "label": "Explain this codebase",
+        "action": {
+          "type": "text",
+          "text": "Give me a tour of this codebase: structure, entry points, and how the pieces connect."
+        }
+      },
+      {
+        "label": "Fix failing tests",
+        "action": {
+          "type": "text",
+          "text": "Run the test suite, find the failures, and fix them."
+        }
+      },
+      {
+        "label": "Continue where we left off",
+        "action": {
+          "type": "text",
+          "text": "Continue where we left off."
+        }
+      },
+      {
+        "label": "Write tests for last change",
+        "action": {
+          "type": "text",
+          "text": "Write tests covering the change you just made."
+        }
+      },
+      {
+        "label": "Commit my work",
+        "action": {
+          "type": "text",
+          "text": "Commit the current changes with a good message."
+        }
+      }
     ]
   },
   "macros": {
-    "type-clear": [{ "type": "text", "text": "/clear" }],
-    "save-preset-hint": [{ "type": "noop" }]
+    "type-clear": [
+      {
+        "type": "text",
+        "text": "/clear"
+      }
+    ],
+    "save-preset-hint": [
+      {
+        "type": "noop"
+      }
+    ]
   }
 }

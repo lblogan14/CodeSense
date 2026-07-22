@@ -9,7 +9,7 @@ const MODES: ModeName[] = ['AGENT', 'NAV', 'PROMPT'];
 /** gestures shown for a selected control, in priority order */
 const CONTROL_GESTURES: Record<string, string[]> = {
   cross: ['cross.press', 'cross.hold'],
-  circle: ['circle.press'],
+  circle: ['circle.press', 'circle.hold'],
   square: ['square.press'],
   triangle: ['triangle.press'],
   dpadUp: ['dpadUp.press'],
@@ -18,7 +18,7 @@ const CONTROL_GESTURES: Record<string, string[]> = {
   dpadRight: ['dpadRight.press'],
   l1: ['l1.press'],
   r1: ['r1.press'],
-  l2: ['l2.hold', 'l2.press', 'l2.pull'],
+  l2: ['l2.press', 'l2.release', 'l2.hold', 'l2.pull'],
   r2: ['r2.pull', 'r2.press'],
   lstick: ['lstick.up', 'lstick.down', 'lstick.left', 'lstick.right'],
   rstick: ['rstick.up', 'rstick.down', 'rstick.left', 'rstick.right'],
@@ -30,6 +30,37 @@ const CONTROL_GESTURES: Record<string, string[]> = {
   lightbar: [],
 };
 
+function TranscriptPane({ entries }: { entries: { role: string; text: string; at: number }[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.scrollTo({ top: ref.current.scrollHeight });
+  }, [entries]);
+  return (
+    <div className="log" ref={ref} style={{ maxHeight: 260 }}>
+      {entries.length === 0 && (
+        <span className="dim">no messages yet — send a prompt below…</span>
+      )}
+      {entries.map((e, i) => (
+        <div key={i} style={{ marginBottom: 6 }}>
+          <span
+            className="mono"
+            style={{
+              color: e.role === 'user' ? 'var(--accent)' : 'var(--text-secondary)',
+              fontSize: 10,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              marginRight: 8,
+            }}
+          >
+            {e.role === 'user' ? 'you' : 'claude'}
+          </span>
+          <span style={{ color: 'var(--text-primary)' }}>{e.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const CONTROL_LABEL: Record<string, string> = {
   cross: '✕ Cross', circle: '◯ Circle', square: '▢ Square', triangle: '△ Triangle',
   dpadUp: 'D-pad up', dpadDown: 'D-pad down', dpadLeft: 'D-pad left', dpadRight: 'D-pad right',
@@ -39,7 +70,8 @@ const CONTROL_LABEL: Record<string, string> = {
 };
 
 export default function App() {
-  const { connected, snapshot, palette, profile, profileResult, logs, send } = useDaemon();
+  const { connected, snapshot, palette, profile, profileResult, logs, transcripts, send } =
+    useDaemon();
   const [selected, setSelected] = useState('r2');
   const [promptText, setPromptText] = useState('');
   const [profileDraft, setProfileDraft] = useState('');
@@ -262,6 +294,15 @@ export default function App() {
               ))}
             </div>
           </div>
+
+          {snapshot?.backend === 'sdk' && (
+            <div className="card">
+              <h2>transcript · session {snapshot.activeSessionSlot}</h2>
+              <TranscriptPane
+                entries={transcripts.filter((t) => t.slot === snapshot.activeSessionSlot)}
+              />
+            </div>
+          )}
 
           {snapshot?.backend === 'sdk' && (
             <div className="card">

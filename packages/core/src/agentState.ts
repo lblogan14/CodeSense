@@ -71,8 +71,11 @@ export class AgentStateMachine extends TypedEmitter<AgentStateEvents> {
         this.scheduleDecay(this.opts.errorHoldMs ?? 4000);
         break;
       case 'notification':
-        // Notifications often mean "Claude is waiting for you"
-        if (this._state === 'thinking') this.transition('permission', event);
+      case 'subagent-start':
+      case 'subagent-end':
+        // No display-state change: Notification means a background task or
+        // subagent event (the daemon turns it into a haptic tap), and
+        // permission waits are signaled by PermissionRequest explicitly.
         break;
     }
   }

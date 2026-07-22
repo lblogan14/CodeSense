@@ -161,7 +161,9 @@ export interface AgentEvent {
     | 'stop'
     | 'stop-failure'
     | 'notification'
-    | 'compact';
+    | 'compact'
+    | 'subagent-start'
+    | 'subagent-end';
   sessionId?: string;
   toolName?: string;
   detail?: string;
@@ -196,7 +198,8 @@ export type Action =
   | { type: 'dial'; direction: 'up' | 'down' } // reasoning/model dial
   | { type: 'palette'; palette: string } // open a named palette
   | { type: 'macro'; id: string }
-  | { type: 'voice'; action: 'toggle' | 'push' }
+  | { type: 'voice'; action: 'toggle' | 'push' | 'pushStart' | 'pushEnd' }
+  | { type: 'rewind' } // open the checkpoint menu (Esc Esc)
   | { type: 'replay-status' }
   | { type: 'noop' };
 

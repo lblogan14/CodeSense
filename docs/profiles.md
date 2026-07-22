@@ -50,9 +50,12 @@ Buttons used in any chord wait ~150 ms before firing their solo binding, so chor
 | `dial` | `direction` | step the reasoning dial (`/model` presets) |
 | `palette` | `palette` | open a named palette (d-pad + ✕ to pick) |
 | `macro` | `id` | run a sequence from `macros` |
-| `voice` | `action` (`toggle`/`push`) | `/voice` or push-to-talk Space |
+| `voice` | `action` (`toggle`/`push`/`pushStart`/`pushEnd`) | `toggle` runs `/voice`; `pushStart`/`pushEnd` on press/release stream key-repeat Space for hold-mode push-to-talk; `push` is a single tap-mode Space |
+| `rewind` | — | Esc · Esc — opens the checkpoint menu (input must be empty) |
 | `replay-status` | — | haptic + lightbar replay of current state |
 | `noop` | — | placeholder |
+
+Two engine behaviors worth knowing: a button with a `.hold` binding fires its `.press` on release instead (tap vs hold never double-fires), and `options.dialCommands` (default `/effort low → max`) is what the reasoning dial steps through — the lightbar brightness flashes to show the level.
 
 ## useful key escapes
 

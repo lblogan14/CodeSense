@@ -69,6 +69,8 @@ export class FeedbackRenderer {
   private approvalPull: number | null = null;
   private replayRequestedAt: number | null = null;
   private transientPulses: { until: number; low: number; high: number }[] = [];
+  private dialFlashUntil = 0;
+  private dialFlashLevel = 0;
   private opts: Required<RendererOptions>;
 
   constructor(opts: RendererOptions = {}) {
@@ -114,6 +116,15 @@ export class FeedbackRenderer {
   /** One-off haptic pulse (palette tick, mode change, etc.). */
   pulse(low = 0.35, high = 0.2, durationMs = 45, now = Date.now()): void {
     this.transientPulses.push({ until: now + durationMs, low, high });
+  }
+
+  /**
+   * Reasoning-dial feedback: for a moment the lightbar brightness
+   * reflects the dial level (0..1) so you can feel where you landed.
+   */
+  dialFlash(level: number, durationMs = 900, now = Date.now()): void {
+    this.dialFlashLevel = Math.max(0, Math.min(1, level));
+    this.dialFlashUntil = now + durationMs;
   }
 
   frame(now = Date.now()): FeedbackFrame {
@@ -170,6 +181,11 @@ export class FeedbackRenderer {
     // R3 replay: 400 ms full-bright flash
     if (this.replayRequestedAt != null && now - this.replayRequestedAt < 400) {
       intensity = 1;
+    }
+
+    // reasoning dial: brightness maps to the dial level while adjusting
+    if (now < this.dialFlashUntil) {
+      intensity = 0.15 + 0.85 * this.dialFlashLevel;
     }
 
     const k = intensity * this.opts.brightness;

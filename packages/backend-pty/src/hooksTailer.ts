@@ -24,6 +24,10 @@ const KIND_MAP: Record<string, AgentEvent['kind']> = {
   Notification: 'notification',
   PreCompact: 'compact',
   PostCompact: 'compact',
+  SubagentStart: 'subagent-start',
+  // both names seen across Claude Code versions
+  SubagentStop: 'subagent-end',
+  SubagentComplete: 'subagent-end',
 };
 
 export function defaultEventsFile(): string {
