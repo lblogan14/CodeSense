@@ -20,6 +20,7 @@ const MIME: Record<string, string> = {
 export function findDashboardDist(): string | null {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const candidates = [
+    path.resolve(here, 'dashboard'), // packaged: dist-pkg/dashboard
     path.resolve(here, '../../dashboard/dist'),
     path.resolve(here, '../dashboard'),
   ];

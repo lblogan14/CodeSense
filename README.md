@@ -7,10 +7,10 @@
 </p>
 
 <p align="center">
-  <img alt="platform" src="https://img.shields.io/badge/platform-windows--first-3E9BFF?style=flat-square">
+  <img alt="platform" src="https://img.shields.io/badge/windows-tested-3E9BFF?style=flat-square">
+  <img alt="mac/linux" src="https://img.shields.io/badge/macos%20%C2%B7%20linux-experimental-9D7CFF?style=flat-square">
   <img alt="node" src="https://img.shields.io/badge/node-%E2%89%A520-2FD48A?style=flat-square">
-  <img alt="license" src="https://img.shields.io/badge/license-MIT-9D7CFF?style=flat-square">
-  <img alt="status" src="https://img.shields.io/badge/status-alpha-FFB020?style=flat-square">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-FFB020?style=flat-square">
 </p>
 
 **CodeSense** turns a stock PS5 DualSense controller into a tactile controller *and* live status display for [Claude Code](https://claude.com/claude-code). Buttons drive the agent; the agent drives the lightbar, player LEDs, haptics, and adaptive triggers back.
@@ -23,9 +23,10 @@ When Claude asks for permission to run a tool, the lightbar pulses **amber**, th
 
 - **feather the pull** and release → *approve once*
 - **pull all the way through the resistance** → *always allow this tool*
+- **▢** → show what you're approving (the actual command, plus Ctrl+E explanation)
 - **◯** → reject
 
-Approval stops being a reflexive `y` keystroke and becomes a deliberate physical act — with scope selected by pull depth.
+Approval stops being a reflexive `y` keystroke and becomes a deliberate physical act — with scope selected by pull depth. The dashboard shows the exact command being approved, and **destructive-looking commands** (`rm -rf`, force-push, `reset --hard`…) announce themselves with a sharper double-buzz so risky approvals *feel* different.
 
 ## ◯ what the lightbar tells you
 
@@ -37,29 +38,35 @@ Approval stops being a reflexive `y` keystroke and becomes a deliberate physical
 | done | green fades, then back to idle | soft pulse |
 | error | red flash ×2, then solid | sharp buzz |
 
-Glance at the pad from across the room and know whether your agent needs you. Press **R3** any time to replay the current status as a haptic + LED burst.
+Glance at the pad from across the room and know whether your agent needs you. Tap **R3** any time to replay the current status as a haptic + LED burst.
+
+Beyond the lightbar: **player LEDs count live subagents** (more lights = more agents working under Claude), a **haptic tap** fires when a background task or subagent finishes, mode changes flash the LEDs so you know where you are, and the **reasoning dial flashes brightness by effort level** — dim for `/effort low`, blinding for `max`.
+
+## 🎙 talk to your agent
+
+Hold **L2** and speak — CodeSense streams key-repeat into Claude Code's native `/voice` dictation, so the trigger is a true push-to-talk. Release to drop the transcript into the input, then edit it without touching the keyboard: **◯ backspace · ◯-hold delete word · △-hold clear line · L1/R1 word jumps · L1+R1+▢ undo**. Toggle dictation with the **mute button** (where else?).
 
 ## ✕ quickstart
 
 ```powershell
-# 1. install & build (pnpm monorepo)
-pnpm install
-pnpm build
+# from source (npm release coming):
+pnpm install && pnpm build
+pnpm --filter code-sense bundle
+npm install -g ./packages/cli          # installs the `codesense` command
 
-# 2. put `codesense` on your PATH (until the npm release) — a shim in any
-#    PATH directory works, e.g. the one that already holds claude.exe:
-"@echo off`nnode `"$PWD\packages\cli\dist\index.js`" %*" | Out-File -Encoding ascii "$env:USERPROFILE\.local\bin\codesense.cmd"
-
-# 3. wire Claude Code hooks (they feed agent state to the controller)
+# wire Claude Code hooks (they feed agent state to the controller)
 codesense hooks install
 
-# 4. check your setup — controller plugged in over USB
+# check your setup — controller plugged in over USB
 codesense doctor
+codesense test        # lightbar/LED/rumble/trigger hardware check
 
-# 5. go — from ANY project directory
+# go — from ANY project directory
 cd c:\path\to\your\project
 codesense start
 ```
+
+On Linux, install the udev rule first — see [docs/platforms.md](docs/platforms.md). macOS and Linux support is implemented but lightly tested — reports welcome.
 
 `codesense start` wraps `claude` in a pseudo-terminal: **your normal Claude Code session, unchanged**, except your controller now works — and the pad shows agent state. The web dashboard is served at [`http://localhost:3737`](http://localhost:3737).
 
@@ -68,10 +75,10 @@ No controller handy? `codesense start --mock` gives you a virtual pad in the das
 ### multi-session command center
 
 ```powershell
-node packages/cli/dist/index.js start --backend sdk
+codesense start --backend sdk
 ```
 
-The SDK backend owns up to **4 Claude sessions** mapped to the player LEDs. **L1/R1** switch the active session, the lightbar tracks the session you're on, and any session that needs permission rumbles the pad — even if it's not the active one. Prompts and transcripts live in the dashboard.
+The SDK backend owns up to **4 Claude sessions** mapped to the player LEDs. **L1/R1** switch the active session, the lightbar tracks the session you're on, and any session that needs permission rumbles the pad — even if it's not the active one. Prompts, live transcripts, and **per-session cost** live in the dashboard.
 
 ## ▢ default mapping (AGENT mode)
 
@@ -88,7 +95,8 @@ The SDK backend owns up to **4 Claude sessions** mapped to the player LEDs. **L1
 | **L2 (hold)** | **push-to-talk** — streams key-repeat into Claude Code's `/voice hold` dictation |
 | left stick | scroll |
 | right stick ↑↓ | **reasoning dial** — steps `/effort low → max`; lightbar brightness shows the level |
-| R3 | replay status (haptic + LED) |
+| **R3 hold + stick flick** | **radial menu** — ↑ `/code-review` · → `/compact` · ↓ `/usage` · ← `/diff` |
+| R3 tap | replay status (haptic + LED) |
 | create | `/copy` — copy last response |
 | touchpad swipe → | `/compact` |
 | touchpad swipe ← | type `/clear` (✕ to confirm) |
@@ -135,10 +143,12 @@ Run `codesense doctor`. The usual suspects:
 
 ## roadmap
 
+- [ ] npm publish (packaging done — `npm pack` verified)
+- [ ] more agent backends: GitHub Copilot CLI (Claude-compatible hooks), opencode, Codex CLI — see [docs/platforms.md](docs/platforms.md)
+- [ ] macOS/Linux field testing
 - [ ] gyro flick gestures (flick to dismiss notifications)
 - [ ] DualSense Edge paddles & function buttons
 - [ ] per-project profiles (`.codesense.json`)
-- [ ] npm release + prebuilt binaries
 
 ## license & trademarks
 

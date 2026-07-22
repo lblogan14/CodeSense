@@ -11,7 +11,7 @@ import { startServer } from './server.js';
 import { runDoctor } from './doctor.js';
 import { banner, icon, kv } from './ui.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.3.0';
 const DEFAULT_PORT = 3737;
 
 function findDefaultProfile(): string {
@@ -19,6 +19,7 @@ function findDefaultProfile(): string {
   const userProfile = path.join(os.homedir(), '.codesense', 'profiles', 'default.json');
   if (fs.existsSync(userProfile)) return userProfile;
   const candidates = [
+    path.resolve(here, 'profiles/default.json'), // packaged: dist-pkg/profiles
     path.resolve(here, '../../../profiles/default.json'), // monorepo: packages/cli/dist → profiles/
     path.resolve(here, '../profiles/default.json'),
   ];

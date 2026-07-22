@@ -3,6 +3,9 @@ __REFERENCE__
 
 node_modules/
 dist/
+dist-pkg/
+packages/cli/README.md
+*.tgz
 *.tsbuildinfo
 .pnpm-store/
 .env
