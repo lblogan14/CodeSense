@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="220" viewBox="0 0 880 220" role="img" aria-label="CodeSense — drive Claude Code with a DualSense controller">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1272E6"/>
+      <stop offset="1" stop-color="#7B52F2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.35" r="0.65">
+      <stop offset="0" stop-color="#3E9BFF" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#3E9BFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <g transform="translate(560, 26) scale(0.72)">
+    <ellipse cx="200" cy="105" rx="185" ry="95" fill="url(#glow)"/>
+    <path d="M 96 44 C 130 36, 270 36, 304 44 C 348 52, 366 92, 372 138 C 378 182, 366 218, 340 224 C 316 229, 296 208, 282 186 C 270 168, 254 160, 200 160 C 146 160, 130 168, 118 186 C 104 208, 84 229, 60 224 C 34 218, 22 182, 28 138 C 34 92, 52 52, 96 44 Z"
+      fill="none" stroke="#8A90A0" stroke-width="2.5"/>
+    <rect x="156" y="50" width="88" height="40" rx="9" fill="none" stroke="#8A90A0" stroke-width="2"/>
+    <path d="M 156 50 C 150 58, 147 72, 148 84" fill="none" stroke="#1272E6" stroke-width="6" stroke-linecap="round"/>
+    <path d="M 244 50 C 250 58, 253 72, 252 84" fill="none" stroke="#1272E6" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="302" cy="82" r="12" fill="none" stroke="#0FA084" stroke-width="2"/>
+    <circle cx="274" cy="108" r="12" fill="none" stroke="#C4569A" stroke-width="2"/>
+    <circle cx="330" cy="108" r="12" fill="none" stroke="#D63A4A" stroke-width="2"/>
+    <circle cx="302" cy="134" r="12" fill="none" stroke="#2F6FC4" stroke-width="2"/>
+    <path d="M 90 80 h 16 v 16 h 16 v 16 h -16 v 16 h -16 v -16 h -16 v -16 h 16 Z" fill="none" stroke="#8A90A0" stroke-width="2"/>
+    <circle cx="152" cy="142" r="20" fill="none" stroke="#8A90A0" stroke-width="2"/>
+    <circle cx="248" cy="142" r="20" fill="none" stroke="#8A90A0" stroke-width="2"/>
+  </g>
+
+  <text x="48" y="86" font-family="ui-monospace, 'Cascadia Code', Consolas, monospace" font-size="26" letter-spacing="10" fill="url(#g)">△◯✕▢</text>
+  <text x="44" y="136" font-family="'Segoe UI', system-ui, sans-serif" font-size="46" font-weight="700" fill="#14161C">code<tspan fill="#1272E6">sense</tspan></text>
+  <text x="48" y="170" font-family="ui-monospace, 'Cascadia Code', Consolas, monospace" font-size="14" fill="#5C6470">your DualSense is a command center for Claude Code</text>
+</svg>

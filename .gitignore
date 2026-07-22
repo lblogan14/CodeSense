@@ -1,2 +1,10 @@
 # Design doc
 __REFERENCE__
+
+node_modules/
+dist/
+*.tsbuildinfo
+.pnpm-store/
+.env
+*.log
+.DS_Store

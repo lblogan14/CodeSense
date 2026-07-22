@@ -1,0 +1,28 @@
+{
+  "name": "@codesense/backend-pty",
+  "version": "0.1.0",
+  "description": "CodeSense terminal backend: wraps the claude CLI in a pty and tails Claude Code hook events",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@codesense/core": "workspace:*",
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

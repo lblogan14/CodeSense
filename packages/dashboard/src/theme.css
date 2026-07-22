@@ -1,0 +1,436 @@
+/* CodeSense design tokens — "console-grade instrumentation" */
+:root {
+  --bg-base: #0b0d12;
+  --bg-surface: #12151c;
+  --bg-elevated: #1a1e27;
+  --bg-overlay: #232834;
+  --border: rgba(255, 255, 255, 0.08);
+  --text-primary: #e8eaf0;
+  --text-secondary: #9aa3b2;
+  --text-muted: #5c6470;
+  --accent: #3e9bff;
+
+  --state-idle: #3e9bff;
+  --state-thinking: #9d7cff;
+  --state-permission: #ffb020;
+  --state-done: #2fd48a;
+  --state-error: #ff5c5c;
+  --state-disconnected: #5c6470;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  --font-mono: 'Commit Mono', 'Geist Mono', 'JetBrains Mono', 'Cascadia Code',
+    Consolas, ui-monospace, monospace;
+  --font-sans: 'Geist Sans', Inter, 'Segoe UI Variable', 'Segoe UI', system-ui,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+::selection {
+  background: rgba(62, 155, 255, 0.35);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.app {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 20px 20px 48px;
+}
+
+/* ── header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 4px 18px;
+  flex-wrap: wrap;
+}
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.wordmark .glyphs {
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  background: linear-gradient(90deg, #3e9bff, #9d7cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.header .meta {
+  margin-left: auto;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.statusdot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+
+/* ── bento grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(420px, 7fr) minmax(300px, 5fr);
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.card h2 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+/* state strip along a card's top edge */
+.card .statestrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  transition: background-color 0.3s ease-out;
+}
+
+/* ── mode tabs ── */
+.modes {
+  display: flex;
+  gap: 6px;
+}
+.modes button {
+  flex: 1;
+  padding: 7px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.18s ease-out;
+}
+.modes button.on {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: rgba(62, 155, 255, 0.1);
+}
+.modes button:hover:not(.on) {
+  background: var(--bg-elevated);
+}
+
+/* ── controller svg ── */
+.controller-wrap {
+  position: relative;
+}
+.controller-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+svg .hit {
+  cursor: pointer;
+}
+svg .hit:hover .shape {
+  filter: brightness(1.35);
+}
+svg .pressed .shape {
+  filter: brightness(1.8);
+}
+
+/* ── state chips ── */
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: transparent;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+.chip.on {
+  color: var(--chip-color, var(--text-primary));
+  border-color: var(--chip-color, var(--border));
+  background: color-mix(in srgb, var(--chip-color, #fff) 10%, transparent);
+}
+
+/* breathing animation for the thinking state */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes doublepulse {
+  0%,
+  7% {
+    opacity: 1;
+  }
+  8%,
+  14% {
+    opacity: 0.45;
+  }
+  15%,
+  22% {
+    opacity: 1;
+  }
+  23%,
+  100% {
+    opacity: 0.45;
+  }
+}
+.anim-thinking {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+.anim-permission {
+  animation: doublepulse 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-thinking,
+  .anim-permission {
+    animation: none;
+  }
+}
+
+/* ── buttons & inputs ── */
+.btn {
+  padding: 7px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
+}
+.btn:hover {
+  background: var(--bg-overlay);
+}
+.btn:active {
+  transform: scale(0.96);
+}
+.btn.primary {
+  background: rgba(62, 155, 255, 0.16);
+  border-color: rgba(62, 155, 255, 0.5);
+  color: #bcdcff;
+}
+.btn.amber {
+  background: rgba(255, 176, 32, 0.14);
+  border-color: rgba(255, 176, 32, 0.5);
+  color: #ffd484;
+}
+.btn.danger {
+  background: rgba(255, 92, 92, 0.12);
+  border-color: rgba(255, 92, 92, 0.45);
+  color: #ffb3b3;
+}
+.btn:focus-visible,
+.chip:focus-visible,
+.modes button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+textarea,
+input[type='text'] {
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 9px 11px;
+  resize: vertical;
+}
+textarea:focus,
+input:focus {
+  outline: 1px solid var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── log pane ── */
+.log {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.log .time {
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+/* ── sessions bento ── */
+.sessions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.session-cell {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  background: var(--bg-base);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.session-cell.active {
+  border-color: var(--accent);
+}
+.session-cell .statestrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+/* ── palette overlay ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 6, 9, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  z-index: 40;
+}
+.palette {
+  width: min(460px, 92vw);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.palette .title {
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.palette .entry {
+  padding: 11px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+.palette .entry.sel {
+  background: rgba(62, 155, 255, 0.14);
+  color: #cfe6ff;
+}
+.palette .hint {
+  padding: 9px 16px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  border-top: 1px solid var(--border);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 6px 12px;
+  font-size: 12px;
+}
+.kv .k {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-top: 1px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.grow {
+  flex: 1;
+}
+.dim {
+  color: var(--text-muted);
+}
+.small {
+  font-size: 11px;
+}

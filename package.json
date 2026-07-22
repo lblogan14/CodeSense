@@ -1,0 +1,21 @@
+{
+  "name": "codesense-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CodeSense — a PS5 DualSense controller as a command center for Claude Code",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter !@codesense/dashboard build && pnpm --filter @codesense/dashboard build",
+    "build:packages": "pnpm -r --filter !@codesense/dashboard build",
+    "dev": "pnpm --filter @codesense/cli dev",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

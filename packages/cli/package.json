@@ -1,0 +1,32 @@
+{
+  "name": "@codesense/cli",
+  "version": "0.1.0",
+  "description": "CodeSense — drive Claude Code with a PS5 DualSense controller",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "codesense": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "node dist/index.js start --mock"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "@codesense/backend-pty": "workspace:*",
+    "@codesense/backend-sdk": "workspace:*",
+    "@codesense/core": "workspace:*",
+    "@codesense/hid": "workspace:*",
+    "picocolors": "^1.1.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0"
+  }
+}
