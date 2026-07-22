@@ -5,13 +5,23 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "codesense": "./dist-pkg/index.js"
+    "codesense": "dist-pkg/index.js"
   },
-  "files": ["dist-pkg"],
-  "keywords": ["claude-code", "dualsense", "ps5", "controller", "hid", "agent", "claude"],
+  "files": [
+    "dist-pkg"
+  ],
+  "keywords": [
+    "claude-code",
+    "dualsense",
+    "ps5",
+    "controller",
+    "hid",
+    "agent",
+    "claude"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/binliu-bko/CodeSense"
+    "url": "git+https://github.com/binliu-bko/CodeSense.git"
   },
   "engines": {
     "node": ">=20"
