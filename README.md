@@ -46,14 +46,19 @@ Glance at the pad from across the room and know whether your agent needs you. Pr
 pnpm install
 pnpm build
 
-# 2. wire Claude Code hooks (they feed agent state to the controller)
-node packages/cli/dist/index.js hooks install
+# 2. put `codesense` on your PATH (until the npm release) — a shim in any
+#    PATH directory works, e.g. the one that already holds claude.exe:
+"@echo off`nnode `"$PWD\packages\cli\dist\index.js`" %*" | Out-File -Encoding ascii "$env:USERPROFILE\.local\bin\codesense.cmd"
 
-# 3. check your setup — controller plugged in over USB
-node packages/cli/dist/index.js doctor
+# 3. wire Claude Code hooks (they feed agent state to the controller)
+codesense hooks install
 
-# 4. go
-node packages/cli/dist/index.js start
+# 4. check your setup — controller plugged in over USB
+codesense doctor
+
+# 5. go — from ANY project directory
+cd c:\path\to\your\project
+codesense start
 ```
 
 `codesense start` wraps `claude` in a pseudo-terminal: **your normal Claude Code session, unchanged**, except your controller now works — and the pad shows agent state. The web dashboard is served at [`http://localhost:3737`](http://localhost:3737).
