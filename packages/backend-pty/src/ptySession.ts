@@ -1,5 +1,48 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import * as pty from 'node-pty';
 import { TypedEmitter } from '@codesense/core';
+
+/**
+ * ConPTY does not search PATH ("File not found"), so resolve the command
+ * to an absolute path the way the shell would: each PATH entry × each
+ * PATHEXT extension. Returns the file to spawn plus prefix args (a .cmd
+ * or .bat must run under cmd.exe /c).
+ */
+export function resolveCommand(
+  command: string,
+  env: Record<string, string | undefined> = process.env,
+): { file: string; prefixArgs: string[] } {
+  const wrap = (file: string): { file: string; prefixArgs: string[] } => {
+    const ext = path.extname(file).toLowerCase();
+    if (process.platform === 'win32' && (ext === '.cmd' || ext === '.bat')) {
+      return {
+        file: path.join(env['SystemRoot'] ?? 'C:\\Windows', 'System32', 'cmd.exe'),
+        prefixArgs: ['/c', file],
+      };
+    }
+    return { file, prefixArgs: [] };
+  };
+
+  if (command.includes('/') || command.includes('\\')) return wrap(command);
+  if (process.platform !== 'win32') return { file: command, prefixArgs: [] };
+
+  const dirs = (env['PATH'] ?? env['Path'] ?? '').split(';').filter(Boolean);
+  const exts = (env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean);
+  const hasExt = path.extname(command) !== '';
+  for (const dir of dirs) {
+    if (hasExt) {
+      const full = path.join(dir, command);
+      if (fs.existsSync(full)) return wrap(full);
+    }
+    for (const ext of exts) {
+      const full = path.join(dir, command + ext.toLowerCase());
+      if (fs.existsSync(full)) return wrap(full);
+    }
+  }
+  // let ConPTY produce its own error for truly missing commands
+  return { file: command, prefixArgs: [] };
+}
 
 export interface PtySessionEvents extends Record<string, unknown> {
   data: string;
@@ -47,18 +90,32 @@ export class PtySession extends TypedEmitter<PtySessionEvents> {
       ...this.opts.env,
       CODESENSE: '1',
     };
-    this.proc = pty.spawn(command, this.opts.args ?? [], {
+    const resolved = resolveCommand(command, env);
+    try {
+      this.proc = this.spawn(resolved, env);
+    } catch (err) {
+      throw new Error(
+        `could not start "${command}" (resolved to "${resolved.file}"): ${String(err)} — is it installed and on PATH?`,
+      );
+    }
+    this.proc.onData((data) => this.emit('data', data));
+    this.proc.onExit(({ exitCode }) => {
+      this.proc = null;
+      this.emit('exit', { exitCode });
+    });
+  }
+
+  private spawn(
+    resolved: { file: string; prefixArgs: string[] },
+    env: Record<string, string>,
+  ): pty.IPty {
+    return pty.spawn(resolved.file, [...resolved.prefixArgs, ...(this.opts.args ?? [])], {
       name: 'xterm-256color',
       cols: this.opts.cols ?? process.stdout.columns ?? 120,
       rows: this.opts.rows ?? process.stdout.rows ?? 30,
       cwd: this.opts.cwd ?? process.cwd(),
       env,
       useConpty: true,
-    });
-    this.proc.onData((data) => this.emit('data', data));
-    this.proc.onExit(({ exitCode }) => {
-      this.proc = null;
-      this.emit('exit', { exitCode });
     });
   }
 
