@@ -55,6 +55,10 @@ Buttons used in any chord wait ~150 ms before firing their solo binding, so chor
 | `replay-status` | — | haptic + lightbar replay of current state |
 | `noop` | — | placeholder |
 
+### editing transcribed text (PROMPT mode)
+
+Voice dictation needs editing tools — the default PROMPT mode maps a delete cluster: ◯ tap = backspace, ◯ hold = delete word (Ctrl+W), △ hold = clear line (Ctrl+U), L1/R1 = word left/right (Alt+B/F), L1+R1+▢ chord = undo edit (Ctrl+_), touchpad swipe ↓ = cancel (Esc).
+
 Two engine behaviors worth knowing: a button with a `.hold` binding fires its `.press` on release instead (tap vs hold never double-fires), and `options.dialCommands` (default `/effort low → max`) is what the reasoning dial steps through — the lightbar brightness flashes to show the level.
 
 ## useful key escapes

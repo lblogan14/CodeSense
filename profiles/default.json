@@ -378,9 +378,9 @@
         "circle.press": {
           "action": {
             "type": "keys",
-            "keys": "\u001b"
+            "keys": ""
           },
-          "label": "Cancel"
+          "label": "Backspace"
         },
         "triangle.press": {
           "action": {
@@ -426,17 +426,17 @@
         },
         "l1.press": {
           "action": {
-            "type": "session",
-            "target": "prev"
+            "type": "keys",
+            "keys": "\u001bb"
           },
-          "label": "Previous session"
+          "label": "Word left (Alt+B)"
         },
         "r1.press": {
           "action": {
-            "type": "session",
-            "target": "next"
+            "type": "keys",
+            "keys": "\u001bf"
           },
-          "label": "Next session"
+          "label": "Word right (Alt+F)"
         },
         "l2.press": {
           "action": {
@@ -500,6 +500,27 @@
             "action": "pushEnd"
           },
           "label": "Push-to-talk stop"
+        },
+        "circle.hold": {
+          "action": {
+            "type": "keys",
+            "keys": "\u0017"
+          },
+          "label": "Delete word (Ctrl+W)"
+        },
+        "triangle.hold": {
+          "action": {
+            "type": "keys",
+            "keys": "\u0015"
+          },
+          "label": "Clear line (Ctrl+U)"
+        },
+        "touchpad.swipeDown": {
+          "action": {
+            "type": "keys",
+            "keys": "\u001b"
+          },
+          "label": "Cancel (Esc)"
         }
       }
     }
@@ -529,6 +550,19 @@
       },
       "label": "Hard interrupt",
       "mode": "*"
+    },
+    {
+      "buttons": [
+        "l1",
+        "r1",
+        "square"
+      ],
+      "action": {
+        "type": "keys",
+        "keys": "\u001f"
+      },
+      "label": "Undo edit (Ctrl+_)",
+      "mode": "PROMPT"
     }
   ],
   "palettes": {
