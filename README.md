@@ -13,9 +13,14 @@
   <img alt="license" src="https://img.shields.io/badge/license-MIT-FFB020?style=flat-square">
 </p>
 
-**CodeSense** turns a stock PS5 DualSense controller into a tactile controller *and* live status display for [Claude Code](https://claude.com/claude-code). Buttons drive the agent; the agent drives the lightbar, player LEDs, haptics, and adaptive triggers back.
+**CodeSense** turns a stock PS5 DualSense controller into a tactile controller *and* live status display for [Claude Code](https://claude.com/claude-code). Buttons drive the agent; the agent drives the lightbar, player LEDs, haptics, and adaptive triggers back — so you *feel* the moment your agent needs you and approve it with a squeeze, without breaking flow.
 
-A $70 controller you already own has more hardware than a $230 macro pad: RGB lightbar, 5 player LEDs, two sticks, analog triggers with programmable resistance, a 2-point touchpad, haptics, and a gyro. CodeSense uses all of it.
+<p align="center">
+  <img alt="CodeSense — the lightbar cycling through agent states" src="docs/assets/demo.gif" width="720">
+  <br><em>the lightbar is the agent: blue idle → purple thinking → amber "needs you" → green done</em>
+</p>
+
+> OpenAI shipped a **$230 macro pad** (Codex Micro) whose best-liked trick is a row of RGB keys showing agent status. A **$70 DualSense you already own** has more of everything — RGB lightbar, 5 player LEDs, two sticks, analog triggers with *programmable resistance*, a touchpad, haptics — and CodeSense uses all of it. Open source, cross-platform, terminal-native, and it does force-feedback approval a macro pad physically can't.
 
 ## △ the signature interaction
 
@@ -107,6 +112,10 @@ The SDK backend owns up to **4 Claude sessions** mapped to the player LEDs. **L1
 And the pad talks back beyond the lightbar: in terminal mode the **player LEDs show live subagent count** (more lights = more agents working under Claude), and a **haptic tap** fires when a background task or subagent finishes while you're looking elsewhere.
 
 Three modes (**AGENT** / **NAV** / **PROMPT**) rebind every control — see the dashboard's mapping explorer, or edit `profiles/default.json` (validated with zod, hot-applied from the dashboard's profile editor).
+
+## live dashboard
+
+Served by the daemon at `localhost:3737`: a live mirror of the pad, the agent-state display, the multi-session grid with per-session cost, a command palette, and a hot-applied profile editor. Works even without hardware (`codesense start --mock`).
 
 <p align="center">
   <img alt="CodeSense dashboard" src="docs/assets/dashboard.png" width="820">

@@ -21,7 +21,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/binliu-bko/CodeSense.git"
+    "url": "git+https://github.com/lblogan14/CodeSense.git"
   },
   "engines": {
     "node": ">=20"
