@@ -1,6 +1,9 @@
 {
-  "name": "code-sense",
+  "name": "@binliu14/code-sense",
   "version": "0.3.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Drive Claude Code with a PS5 DualSense controller — buttons in, lightbar/haptic agent status out",
   "license": "MIT",
   "type": "module",

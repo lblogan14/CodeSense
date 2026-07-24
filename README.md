@@ -54,10 +54,12 @@ Hold **L2** and speak — CodeSense streams key-repeat into Claude Code's native
 ## ✕ quickstart
 
 ```powershell
-# from source (npm release coming):
-pnpm install && pnpm build
-pnpm --filter code-sense bundle
-npm install -g ./packages/cli          # installs the `codesense` command
+# install from npm (the `codesense` command lands on your PATH):
+npm install -g @binliu14/code-sense
+
+# ...or from source:
+#   pnpm install && pnpm build
+#   pnpm --filter @binliu14/code-sense bundle && npm install -g ./packages/cli
 
 # wire Claude Code hooks (they feed agent state to the controller)
 codesense hooks install

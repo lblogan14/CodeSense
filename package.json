@@ -11,7 +11,7 @@
   "scripts": {
     "build": "pnpm -r --filter !@codesense/dashboard build && pnpm --filter @codesense/dashboard build",
     "build:packages": "pnpm -r --filter !@codesense/dashboard build",
-    "dev": "pnpm --filter code-sense dev",
+    "dev": "pnpm --filter @binliu14/code-sense dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },

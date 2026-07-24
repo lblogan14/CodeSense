@@ -58,7 +58,7 @@ Some things I learned building it:
 Happy to answer anything.
 
 ## Posting checklist
-- [ ] npm publish landed (`npm view code-sense version`) so `npm i -g code-sense` works
+- [ ] npm publish landed (`npm view @binliu14/code-sense version`) so `npm i -g @binliu14/code-sense` works
 - [ ] demo.gif renders at top of README on GitHub
 - [ ] repo description + topics set
 - [ ] post from an aged account (HN throttles new accounts on Show HN)
