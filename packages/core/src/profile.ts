@@ -101,6 +101,10 @@ export const profileSchema = z.object({
         .array(z.string())
         .min(2)
         .default(['/effort low', '/effort medium', '/effort high', '/effort xhigh', '/effort max']),
+      /** seconds idle before the lightbar dims (0 disables) */
+      idleDimAfterSec: z.number().int().min(0).default(180),
+      /** escalate the "needs you" pulse the longer it goes unanswered */
+      attentionEscalate: z.boolean().default(true),
     })
     .default({}),
   modes: z.record(

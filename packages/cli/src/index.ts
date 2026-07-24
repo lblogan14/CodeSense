@@ -11,7 +11,7 @@ import { startServer } from './server.js';
 import { runDoctor } from './doctor.js';
 import { banner, icon, kv } from './ui.js';
 
-const VERSION = '0.3.1';
+const VERSION = '0.4.0';
 const DEFAULT_PORT = 3737;
 
 function findDefaultProfile(): string {

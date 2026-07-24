@@ -4,6 +4,7 @@ import {
   AgentStateMachine,
   FeedbackRenderer,
   MappingEngine,
+  STATE_LIGHTBAR,
   TypedEmitter,
   safeParseProfile,
 } from '@codesense/core';
@@ -91,6 +92,8 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
   private pendingPermissionDetail: { toolName?: string; detail?: string } | undefined;
   /** live subagent count (pty mode) → player LEDs */
   private subagentCount = 0;
+  /** last time each non-active waiting slot was nudged (escalation) */
+  private attentionNudgedAt = new Map<number, number>();
   /** mode-change LED flash: N flashes signal the new mode */
   private modeFlash: { count: number; startedAt: number } | null = null;
 
@@ -103,6 +106,8 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
       brightness: opts.brightness,
       haptics: opts.haptics,
       adaptiveTriggers: opts.adaptiveTriggers,
+      idleDimAfterSec: this.profile.options.idleDimAfterSec,
+      attentionEscalate: this.profile.options.attentionEscalate,
     });
     this.wireEngine();
     this.wireStateSources();
@@ -260,7 +265,12 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
     this.sessions.on('permission', ({ slot, pending }) => {
       this.pendingPermissionDetail = { toolName: pending.toolName };
       this.log(`session ${slot} · waiting for you · ${pending.toolName}`);
-      if (slot !== this.sessions.activeSlot) this.renderer.pulse(0.6, 0.4, 120);
+      // a non-active session identifies itself: N taps + a color peek
+      if (slot !== this.sessions.activeSlot) {
+        this.renderer.tapBurst(slot);
+        this.renderer.peekAttention(STATE_LIGHTBAR.permission);
+        this.attentionNudgedAt.set(slot, Date.now());
+      }
     });
     this.sessions.on('text', ({ slot, text }) => {
       this.emit('transcript', { slot, role: 'assistant', text });
@@ -455,6 +465,7 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
       if (waiting.length && this.blinkPhase) {
         for (const slot of waiting) mask |= playerLedPattern(slot);
       }
+      this.escalateSessionAttention(waiting);
     } else {
       // pty mode: more lights = more live subagents (0 → center anchor)
       mask =
@@ -480,6 +491,32 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
 
   private currentAgentState() {
     return this.opts.backend === 'sdk' ? this.sessions.activeState : this.stateMachine.state;
+  }
+
+  /**
+   * Re-nudge non-active sessions that are still waiting, on a cadence that
+   * tightens the longer they go unattended — so you don't miss an agent that
+   * needs you on a slot you're not looking at.
+   */
+  private escalateSessionAttention(waiting: number[]): void {
+    const now = Date.now();
+    const active = this.sessions.activeSlot;
+    const stillWaiting = new Set(waiting);
+    for (const slot of this.attentionNudgedAt.keys()) {
+      if (!stillWaiting.has(slot)) this.attentionNudgedAt.delete(slot); // resolved
+    }
+    for (const slot of waiting) {
+      if (slot === active) continue;
+      const since = this.attentionNudgedAt.get(slot) ?? 0;
+      const elapsed = now - since;
+      // 6 s cadence, tightening toward 2.5 s the longer it's ignored
+      const interval = Math.max(2500, 6000 - Math.min(3500, elapsed / 4));
+      if (elapsed >= interval) {
+        this.renderer.tapBurst(slot);
+        this.renderer.peekAttention(STATE_LIGHTBAR.permission);
+        this.attentionNudgedAt.set(slot, now);
+      }
+    }
   }
 
   private buildDispatcher(pty: PtySession): PtyDispatcher {

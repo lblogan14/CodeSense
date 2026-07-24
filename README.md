@@ -43,7 +43,7 @@ Approval stops being a reflexive `y` keystroke and becomes a deliberate physical
 | done | green fades, then back to idle | soft pulse |
 | error | red flash ×2, then solid | sharp buzz |
 
-Glance at the pad from across the room and know whether your agent needs you. Tap **R3** any time to replay the current status as a haptic + LED burst.
+Glance at the pad from across the room and know whether your agent needs you. And if you look away, it **escalates**: the amber pulse and haptic tighten and strengthen the longer a permission goes unanswered — so you never miss it, without the fixed idle timer that Claude Code users complain about. Tap **R3** any time to replay the current status as a haptic + LED burst. After minutes of idle the lightbar quietly dims.
 
 Beyond the lightbar: **player LEDs count live subagents** (more lights = more agents working under Claude), a **haptic tap** fires when a background task or subagent finishes, mode changes flash the LEDs so you know where you are, and the **reasoning dial flashes brightness by effort level** — dim for `/effort low`, blinding for `max`.
 
@@ -85,7 +85,7 @@ No controller handy? `codesense start --mock` gives you a virtual pad in the das
 codesense start --backend sdk
 ```
 
-The SDK backend owns up to **4 Claude sessions** mapped to the player LEDs. **L1/R1** switch the active session, the lightbar tracks the session you're on, and any session that needs permission rumbles the pad — even if it's not the active one. Prompts, live transcripts, and **per-session cost** live in the dashboard.
+The SDK backend owns up to **4 Claude sessions** mapped to the player LEDs. **L1/R1** switch the active session, the lightbar tracks the session you're on, and any session that needs permission **identifies itself**: it taps out its slot number on the haptics (3 taps = session 3) and briefly peeks its color on the lightbar — even while you're focused on another agent, and it re-nudges on an escalating cadence until you deal with it. Prompts, live transcripts, and **per-session cost** live in the dashboard.
 
 ## ▢ default mapping (AGENT mode)
 

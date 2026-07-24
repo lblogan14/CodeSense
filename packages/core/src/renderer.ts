@@ -37,12 +37,12 @@ interface HapticPulse {
   high: number;
 }
 
-/** Haptic patterns per state entry (from the design brief). */
+/**
+ * Haptic patterns per state entry (from the design brief). The permission
+ * state is NOT here — its haptics are generated dynamically so they can
+ * escalate the longer the agent waits (see the haptics block in frame()).
+ */
 const HAPTIC_PATTERNS: Partial<Record<AgentStateName, HapticPulse[]>> = {
-  permission: [
-    { at: 0, duration: 90, low: 0.7, high: 0.5 },
-    { at: 180, duration: 90, low: 0.7, high: 0.5 },
-  ],
   done: [{ at: 0, duration: 140, low: 0.3, high: 0.15 }],
   error: [{ at: 0, duration: 260, low: 1, high: 0.9 }],
 };
@@ -54,6 +54,12 @@ export interface RendererOptions {
   haptics?: boolean;
   /** disable adaptive trigger effects */
   adaptiveTriggers?: boolean;
+  /** seconds of idle before the lightbar fades; 0 disables */
+  idleDimAfterSec?: number;
+  /** lightbar intensity once dimmed (0..1) */
+  idleDimLevel?: number;
+  /** escalate the "needs you" pulse/haptic the longer it goes unanswered */
+  attentionEscalate?: boolean;
 }
 
 /**
@@ -68,9 +74,10 @@ export class FeedbackRenderer {
   private muteLed = false;
   private approvalPull: number | null = null;
   private replayRequestedAt: number | null = null;
-  private transientPulses: { until: number; low: number; high: number }[] = [];
+  private transientPulses: { from: number; until: number; low: number; high: number }[] = [];
   private dialFlashUntil = 0;
   private dialFlashLevel = 0;
+  private attentionPeek: { color: RGB; until: number } | null = null;
   private opts: Required<RendererOptions>;
 
   constructor(opts: RendererOptions = {}) {
@@ -78,6 +85,9 @@ export class FeedbackRenderer {
       brightness: opts.brightness ?? 1,
       haptics: opts.haptics ?? true,
       adaptiveTriggers: opts.adaptiveTriggers ?? true,
+      idleDimAfterSec: opts.idleDimAfterSec ?? 180,
+      idleDimLevel: opts.idleDimLevel ?? 0.06,
+      attentionEscalate: opts.attentionEscalate ?? true,
     };
   }
 
@@ -115,7 +125,29 @@ export class FeedbackRenderer {
 
   /** One-off haptic pulse (palette tick, mode change, etc.). */
   pulse(low = 0.35, high = 0.2, durationMs = 45, now = Date.now()): void {
-    this.transientPulses.push({ until: now + durationMs, low, high });
+    this.transientPulses.push({ from: now, until: now + durationMs, low, high });
+  }
+
+  /**
+   * A burst of `count` distinct taps (e.g. to identify session N). Taps are
+   * spaced so you can feel them apart.
+   */
+  tapBurst(count: number, opts: { gapMs?: number; low?: number; high?: number } = {}, now = Date.now()): void {
+    const gap = opts.gapMs ?? 150;
+    const low = opts.low ?? 0.6;
+    const high = opts.high ?? 0.4;
+    for (let i = 0; i < count; i++) {
+      const from = now + i * gap;
+      this.transientPulses.push({ from, until: from + 70, low, high });
+    }
+  }
+
+  /**
+   * Briefly show another session's color on the lightbar (peripheral
+   * "session N needs you" glance) without changing the focused state.
+   */
+  peekAttention(color: RGB, durationMs = 700, now = Date.now()): void {
+    this.attentionPeek = { color, until: now + durationMs };
   }
 
   /**
@@ -138,19 +170,27 @@ export class FeedbackRenderer {
       case 'disconnected':
         intensity = 0;
         break;
-      case 'idle':
+      case 'idle': {
         intensity = 0.35; // calm, low brightness
+        const dimAfter = this.opts.idleDimAfterSec;
+        if (dimAfter > 0 && t > dimAfter) {
+          const over = Math.min(1, (t - dimAfter) / 10); // fade over 10 s
+          intensity = 0.35 + (this.opts.idleDimLevel - 0.35) * over;
+        }
         break;
+      }
       case 'thinking':
         // slow breathe: 2.4 s sine, 40%..100%
         intensity = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin((t / 2.4) * Math.PI * 2 - Math.PI / 2));
         break;
       case 'permission': {
-        // double pulse every 2 s: two 150 ms peaks at 0 ms and 300 ms
-        const phase = (t % 2) * 1000;
-        const pulse =
-          (phase < 150 ? 1 : 0) || (phase >= 300 && phase < 450 ? 1 : 0);
-        intensity = pulse ? 1 : 0.45;
+        // escalating double-pulse: the cadence tightens and the floor rises
+        // the longer the agent waits unanswered (beats a fixed idle timer).
+        const urg = this.attentionUrgency(t);
+        const period = 2.0 - 1.1 * urg; // 2.0 s → 0.9 s
+        const phase = (t % period) * 1000;
+        const pulse = phase < 150 || (phase >= 300 && phase < 450);
+        intensity = pulse ? 1 : 0.4 + 0.25 * urg;
         // pulling R2 brightens the bar with the pull — physical dialog
         if (this.approvalPull != null) {
           intensity = Math.max(intensity, 0.45 + 0.55 * this.approvalPull);
@@ -206,6 +246,19 @@ export class FeedbackRenderer {
           }
         }
       }
+      // permission: repeating double-tap that escalates until answered
+      if (this.state === 'permission') {
+        const urg = this.attentionUrgency(t);
+        const period = 2.0 - 1.1 * urg;
+        const amp = 0.55 + 0.45 * urg;
+        const ph = (t % period) * 1000;
+        if (ph < 80 || (ph >= 180 && ph < 260)) {
+          f.rumble = {
+            low: Math.max(f.rumble.low, 0.6 * amp),
+            high: Math.max(f.rumble.high, 0.4 * amp),
+          };
+        }
+      }
       // replay-status: re-run the current state's pattern relative to the request
       if (this.replayRequestedAt != null) {
         const ms = now - this.replayRequestedAt;
@@ -224,14 +277,16 @@ export class FeedbackRenderer {
       }
     }
 
-    // transient pulses (palette ticks etc.)
+    // transient pulses (palette ticks, session-identify taps, etc.)
     if (this.opts.haptics && this.transientPulses.length) {
       this.transientPulses = this.transientPulses.filter((p) => p.until > now);
       for (const p of this.transientPulses) {
-        f.rumble = {
-          low: Math.max(f.rumble.low, p.low),
-          high: Math.max(f.rumble.high, p.high),
-        };
+        if (p.from <= now && now < p.until) {
+          f.rumble = {
+            low: Math.max(f.rumble.low, p.low),
+            high: Math.max(f.rumble.high, p.high),
+          };
+        }
       }
     }
 
@@ -242,8 +297,29 @@ export class FeedbackRenderer {
       f.triggers.r2 = r2;
     }
 
+    // peripheral "another session needs you" glance: briefly override the
+    // lightbar with that session's color, shimmering, without losing state.
+    if (this.attentionPeek && now < this.attentionPeek.until) {
+      const c = this.attentionPeek.color;
+      const shimmer = 0.5 + 0.5 * Math.sin(now / 90);
+      const kk = (0.45 + 0.55 * shimmer) * this.opts.brightness;
+      f.lightbar = {
+        r: Math.round(c.r * kk),
+        g: Math.round(c.g * kk),
+        b: Math.round(c.b * kk),
+      };
+    } else if (this.attentionPeek) {
+      this.attentionPeek = null;
+    }
+
     f.playerLeds = this.playerLeds;
     f.muteLed = this.muteLed;
     return f;
+  }
+
+  /** 0..1 attention urgency: ramps from ~10s to ~35s in a state. */
+  private attentionUrgency(secondsInState: number): number {
+    if (!this.opts.attentionEscalate) return 0;
+    return Math.min(1, Math.max(0, (secondsInState - 10) / 25));
   }
 }
