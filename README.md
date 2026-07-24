@@ -39,7 +39,7 @@ Approval stops being a reflexive `y` keystroke and becomes a deliberate physical
 |---|---|---|
 | idle | calm blue, low glow | — |
 | thinking / tool running | purple, 2.4 s breathing | — |
-| **waiting for you** | amber, double-pulse | double-tap |
+| **waiting for you** | amber, pulse (escalates) | double-tap, escalating |
 | done | green fades, then back to idle | soft pulse |
 | error | red flash ×2, then solid | sharp buzz |
 
@@ -64,7 +64,7 @@ npm install -g @binliu14/code-sense
 # wire Claude Code hooks (they feed agent state to the controller)
 codesense hooks install
 
-# check your setup — controller plugged in over USB
+# check your setup — controller connected over USB or Bluetooth
 codesense doctor
 codesense test        # lightbar/LED/rumble/trigger hardware check
 
@@ -139,7 +139,7 @@ DualSense ⇄ HID (node-hid) ⇄ codesense daemon (TypeScript)
 - **`@codesense/core`** — agent state machine, gesture/mapping engine, zod profiles, feedback renderer.
 - **`@codesense/backend-pty`** — ConPTY wrapper around `claude`, hooks installer + `events.jsonl` tailer.
 - **`@codesense/backend-sdk`** — daemon-owned sessions via `@anthropic-ai/claude-agent-sdk`; permission requests resolve through the controller.
-- **`@codesense/cli`** — `codesense start · doctor · hooks · profiles`.
+- **`@codesense/cli`** — `codesense start · doctor · test · hooks · profiles`.
 - **`@codesense/dashboard`** — live controller/agent instrumentation (Vite + React, served by the daemon).
 
 More detail in [docs/architecture.md](docs/architecture.md) and [docs/profiles.md](docs/profiles.md).
@@ -154,12 +154,15 @@ Run `codesense doctor`. The usual suspects:
 
 ## roadmap
 
-- [ ] npm publish (packaging done — `npm pack` verified)
-- [ ] more agent backends: GitHub Copilot CLI (Claude-compatible hooks), opencode, Codex CLI — see [docs/platforms.md](docs/platforms.md)
-- [ ] macOS/Linux field testing
-- [ ] gyro flick gestures (flick to dismiss notifications)
-- [ ] DualSense Edge paddles & function buttons
+Published on npm as [`@binliu14/code-sense`](https://www.npmjs.com/package/@binliu14/code-sense); USB + Bluetooth verified on hardware. Next up:
+
+- [ ] quota / self-set budget gauge — ambient cost warning on the lightbar
+- [ ] more agent backends: GitHub Copilot CLI (nearly Claude-compatible hooks), opencode, Codex CLI — see [docs/platforms.md](docs/platforms.md)
 - [ ] per-project profiles (`.codesense.json`)
+- [ ] macOS / Linux field testing
+- [ ] DualSense Edge paddles & function buttons
+
+Done recently: analog-R2 approval, escalating attention system, voice push-to-talk, rewind, effort dial, radial menu, per-session cost, Bluetooth.
 
 ## license & trademarks
 
