@@ -55,7 +55,11 @@ export function findDualSenseDevices(): DeviceCandidate[] {
 }
 
 const WRITE_INTERVAL_MS = 33; // ~30 Hz max output rate, on-change only
-const INIT_WRITES = 3; // repeat init flags on the first few writes
+const INIT_WRITES = 3; // USB: repeat init flags on the first few writes
+// BT: keep asserting the LED-takeover flags for this long after opening —
+// output writes are ignored during the controller's pairing-light animation
+// (~3.4s after power-on), so a fixed few writes can land in the dead window.
+const BT_INIT_MS = 5000;
 
 /**
  * A connected physical DualSense. Parses input reports into
@@ -70,6 +74,7 @@ export class HidDualSense extends TypedEmitter<DualSenseEvents> implements DualS
   private writeTimer: ReturnType<typeof setInterval>;
   private btSeq = 0;
   private initRemaining = INIT_WRITES;
+  private openedAt = Date.now();
   private requestedFullMode = false;
   private closed = false;
   readonly productName: string;
@@ -78,6 +83,7 @@ export class HidDualSense extends TypedEmitter<DualSenseEvents> implements DualS
     super();
     this.productName = candidate.product;
     this._connection = candidate.guessedConnection;
+    this.openedAt = Date.now();
     this.device = new HID.HID(candidate.path);
     this.device.on('data', (buf: Buffer) => this.onData(buf));
     this.device.on('error', (err: Error) => {
@@ -125,7 +131,12 @@ export class HidDualSense extends TypedEmitter<DualSenseEvents> implements DualS
   private flush(): void {
     if (this.closed) return;
     const json = JSON.stringify(this.desired);
-    const init = this.initRemaining > 0;
+    // BT: assert LED-takeover flags for a time window (survives the pairing
+    // animation); USB: a few writes is enough.
+    const init =
+      this._connection === 'bluetooth'
+        ? Date.now() - this.openedAt < BT_INIT_MS
+        : this.initRemaining > 0;
     if (json === this.lastWrittenJson && !init) return;
     try {
       const report =
@@ -134,7 +145,7 @@ export class HidDualSense extends TypedEmitter<DualSenseEvents> implements DualS
           : buildUsbOutputReport(this.desired, { init });
       this.device.write(Array.from(report));
       this.lastWrittenJson = json;
-      if (init) this.initRemaining -= 1;
+      if (init && this._connection !== 'bluetooth') this.initRemaining -= 1;
     } catch (err) {
       this.emit('error', { message: `output write failed: ${String(err)}` });
       this.dispose('write failure');
