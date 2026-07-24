@@ -9,7 +9,7 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 /**
  * Hardware smoke test: cycles every agent-state lightbar animation,
  * player LED pattern, a rumble pulse, and the R2 resistance effect on
- * the physical controller. `codesense test [--experimental-bt]`
+ * the physical controller. `codesense test [--usb-only]`
  */
 export async function runTestPattern(allowBluetooth: boolean): Promise<number> {
   console.log(pc.bold('codesense hardware test'));

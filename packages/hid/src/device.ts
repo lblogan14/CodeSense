@@ -85,6 +85,16 @@ export class HidDualSense extends TypedEmitter<DualSenseEvents> implements DualS
     this._connection = candidate.guessedConnection;
     this.openedAt = Date.now();
     this.device = new HID.HID(candidate.path);
+    // Kick the full-rate input stream: reading calibration feature report 0x05
+    // makes the DualSense start sending the expanded report. Required over
+    // Bluetooth (without it you get a ~0.5 Hz trickle instead of ~250 Hz);
+    // harmless over USB, where SDL/the kernel read it at init too.
+    try {
+      this.device.getFeatureReport(0x05, 41);
+      this.requestedFullMode = true;
+    } catch {
+      // fall back to the reactive switch when a simplified report arrives
+    }
     this.device.on('data', (buf: Buffer) => this.onData(buf));
     this.device.on('error', (err: Error) => {
       this.emit('error', { message: String(err) });
@@ -222,12 +232,11 @@ export class DeviceManager extends TypedEmitter<DeviceManagerEvents> {
     // prefer USB when both transports are present
     let pick = candidates.find((c) => c.guessedConnection === 'usb');
     if (!pick) {
-      if (!this.opts.allowBluetooth) {
+      if (this.opts.allowBluetooth === false) {
         if (!this.warnedBt) {
           this.warnedBt = true;
           this.emit('error', {
-            message:
-              'DualSense found on Bluetooth only — plug in USB, or start with --experimental-bt',
+            message: 'DualSense found on Bluetooth only — plug in USB, or drop --usb-only',
           });
         }
         return;

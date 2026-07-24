@@ -41,7 +41,7 @@ export interface DaemonOptions {
   adaptiveTriggers: boolean;
   claudeCommand: string;
   claudeArgs: string[];
-  experimentalBt: boolean;
+  allowBluetooth: boolean;
   log: (line: string) => void;
 }
 
@@ -117,7 +117,7 @@ export class Daemon extends TypedEmitter<DaemonEvents> {
       this.attachDevice(this.mock);
       this.log('virtual controller ready (mock mode)');
     } else {
-      this.deviceManager = new DeviceManager({ allowBluetooth: this.opts.experimentalBt });
+      this.deviceManager = new DeviceManager({ allowBluetooth: this.opts.allowBluetooth });
       this.deviceManager.on('attach', ({ device }) => {
         this.attachDevice(device);
         this.log(`controller connected · ${device.productName} · ${device.connection}`);

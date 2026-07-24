@@ -51,7 +51,7 @@ export async function runDoctor(): Promise<number> {
               ok: false,
               warn: true,
               detail: 'no DualSense detected',
-              fix: 'plug the controller in over USB (Bluetooth needs --experimental-bt)',
+              fix: 'connect the controller over USB or pair it via Bluetooth',
             };
           }
           const d = devices[0]!;

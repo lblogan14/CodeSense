@@ -11,7 +11,7 @@ import { startServer } from './server.js';
 import { runDoctor } from './doctor.js';
 import { banner, icon, kv } from './ui.js';
 
-const VERSION = '0.3.0';
+const VERSION = '0.3.1';
 const DEFAULT_PORT = 3737;
 
 function findDefaultProfile(): string {
@@ -36,7 +36,7 @@ interface StartFlags {
   brightness: number;
   haptics: boolean;
   triggers: boolean;
-  bt: boolean;
+  bluetooth: boolean;
   claudeArgs: string[];
 }
 
@@ -50,7 +50,7 @@ function parseStartFlags(args: string[]): StartFlags {
     brightness: 1,
     haptics: true,
     triggers: true,
-    bt: false,
+    bluetooth: true, // BT is first-class; USB still preferred when both present
     claudeArgs: [],
   };
   for (let i = 0; i < args.length; i++) {
@@ -64,7 +64,8 @@ function parseStartFlags(args: string[]): StartFlags {
       case '--brightness': flags.brightness = Math.max(0.1, Math.min(1, Number(args[++i]) || 1)); break;
       case '--no-haptics': flags.haptics = false; break;
       case '--no-triggers': flags.triggers = false; break;
-      case '--experimental-bt': flags.bt = true; break;
+      case '--usb-only': flags.bluetooth = false; break;
+      case '--experimental-bt': break; // BT is now on by default; kept as a no-op alias
       case '--': flags.claudeArgs = args.slice(i + 1); i = args.length; break;
       default:
         console.error(pc.red(`unknown flag ${a}`));
@@ -92,7 +93,7 @@ async function cmdStart(args: string[]): Promise<void> {
   console.log(banner(VERSION));
   console.log(kv('backend', flags.backend + (flags.mock ? ' · mock controller' : '')));
   console.log(kv('profile', path.basename(profilePath)));
-  if (!flags.bt) console.log(kv('transport', 'usb (add --experimental-bt for bluetooth)'));
+  console.log(kv('transport', flags.bluetooth ? 'usb + bluetooth' : 'usb only'));
 
   const daemon = new Daemon({
     backend: flags.backend,
@@ -104,7 +105,7 @@ async function cmdStart(args: string[]): Promise<void> {
     adaptiveTriggers: flags.triggers,
     claudeCommand: 'claude',
     claudeArgs: flags.claudeArgs,
-    experimentalBt: flags.bt,
+    allowBluetooth: flags.bluetooth,
     log,
   });
 
@@ -189,7 +190,12 @@ async function main(): Promise<void> {
       break;
     case 'test': {
       const { runTestPattern } = await import('./testPattern.js');
-      process.exitCode = await runTestPattern(rest.includes('--experimental-bt'));
+      process.exitCode = await runTestPattern(!rest.includes('--usb-only'));
+      break;
+    }
+    case 'sniff': {
+      const { runSniff } = await import('./sniff.js');
+      process.exitCode = await runSniff(!rest.includes('--usb-only'));
       break;
     }
     case 'hooks':
@@ -216,7 +222,7 @@ usage: codesense <command>
     --brightness <0-1>  lightbar brightness
     --no-haptics        disable rumble feedback
     --no-triggers       disable adaptive trigger effects
-    --experimental-bt   allow bluetooth transport
+    --usb-only          ignore Bluetooth controllers (USB is preferred anyway)
     -- <args>           extra args passed to claude
   doctor             environment + hardware checks
   test               hardware smoke test: lightbar, LEDs, rumble, R2 resistance

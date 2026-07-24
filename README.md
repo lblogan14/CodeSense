@@ -7,9 +7,9 @@
 </p>
 
 <p align="center">
-  <img alt="platform" src="https://img.shields.io/badge/windows-tested-3E9BFF?style=flat-square">
-  <img alt="mac/linux" src="https://img.shields.io/badge/macos%20%C2%B7%20linux-experimental-9D7CFF?style=flat-square">
-  <img alt="node" src="https://img.shields.io/badge/node-%E2%89%A520-2FD48A?style=flat-square">
+  <img alt="npm" src="https://img.shields.io/npm/v/%40binliu14%2Fcode-sense?style=flat-square&color=3E9BFF&label=npm">
+  <img alt="windows" src="https://img.shields.io/badge/windows-tested-3E9BFF?style=flat-square">
+  <img alt="transport" src="https://img.shields.io/badge/USB%20%2B%20Bluetooth-working-2FD48A?style=flat-square">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-FFB020?style=flat-square">
 </p>
 
@@ -135,7 +135,7 @@ DualSense ⇄ HID (node-hid) ⇄ codesense daemon (TypeScript)
                         web dashboard (ws, localhost:3737)
 ```
 
-- **`@codesense/hid`** — DualSense protocol: input report parsing, output reports over USB (and Bluetooth behind `--experimental-bt`, with the 0x31 framing + CRC-32 the controller requires), Nielk1-opcode adaptive-trigger effects.
+- **`@codesense/hid`** — DualSense protocol: input report parsing, output reports over USB and Bluetooth (0x31 framing + CRC-32, plus the feature-report `0x05` read that kicks the full-rate BT stream), Nielk1-opcode adaptive-trigger effects.
 - **`@codesense/core`** — agent state machine, gesture/mapping engine, zod profiles, feedback renderer.
 - **`@codesense/backend-pty`** — ConPTY wrapper around `claude`, hooks installer + `events.jsonl` tailer.
 - **`@codesense/backend-sdk`** — daemon-owned sessions via `@anthropic-ai/claude-agent-sdk`; permission requests resolve through the controller.
@@ -150,7 +150,7 @@ Run `codesense doctor`. The usual suspects:
 
 - **Steam / DS4Windows fighting over the pad** — Windows HID handles are shared; last writer wins on the lightbar. Disable PlayStation support in Steam Input while CodeSense runs.
 - **Lightbar never changes** — hooks aren't installed (`codesense hooks install`), or your `claude` session predates the install (restart it).
-- **Bluetooth** — supported behind `--experimental-bt`; USB is the blessed path.
+- **Bluetooth** — works out of the box (USB is still auto-preferred when both are connected; force wired with `--usb-only`). If the lightbar doesn't respond right after pairing, give it ~4 s — output is ignored during the controller's pairing-light animation.
 
 ## roadmap
 

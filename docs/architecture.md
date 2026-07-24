@@ -4,7 +4,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  DualSense (USB / Bluetooth --experimental-bt)          │
+│  DualSense (USB / Bluetooth)                            │
 │  input reports ↑↓ output reports (lightbar/LED/haptics) │
 └──────────────┬──────────────────────────────────────────┘
                │ HID (node-hid)
@@ -65,7 +65,7 @@
 
 ## decisions & constraints
 
-- **USB first.** BT output framing is implemented (CRC-32 etc.) but gated behind `--experimental-bt` until soak-tested.
+- **USB preferred, Bluetooth works.** BT output framing (0x31 + CRC-32) is verified on hardware and on by default; USB is auto-picked when both are connected. Reading feature report 0x05 on open kicks the full-rate BT input stream (without it BT trickles at ~0.5 Hz).
 - **Hooks over screen scraping.** State comes from Claude Code's own hook events, never from parsing terminal output; slash commands and documented keybindings are preferred over cursor-position tricks.
 - **Windows HID is shared.** We can't take exclusive access; `doctor` detects likely contenders instead of fighting them.
 - **One output report per change.** Every write carries the full desired state (valid-flag sections are applied absolutely), so the writer caches the last frame and only sends diffs.

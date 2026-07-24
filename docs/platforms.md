@@ -5,7 +5,7 @@
 | **Windows 10/11** | ✅ tested daily | primary development platform; ConPTY terminal wrapper |
 | **macOS** | 🧪 should work, needs testers | node-hid + node-pty both support macOS; DualSense works over USB out of the box. Voice needs the Claude Code native module (supported). |
 | **Linux** | 🧪 should work, needs testers | requires a udev rule for hidraw access — see below |
-| **Bluetooth (all)** | 🧪 experimental | `--experimental-bt`; full 0x31 CRC framing implemented, lightly field-tested |
+| **Bluetooth** | ✅ working (Windows) | on by default; full 0x31 + CRC-32 framing, verified on hardware. `--usb-only` to disable |
 
 ## Linux setup
 
