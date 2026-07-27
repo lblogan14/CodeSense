@@ -30,6 +30,10 @@ dependency-free on purpose — don't add imports to them.
 (P2, docked over USB-C). Serial shares `framing.ts` with the bridge's
 `SerialTransport`; run the bridge with `--serial COM3` on the host side.
 
+> **New to this? Follow [SETUP.md](SETUP.md)** — a full step-by-step for the
+> P1–P3 hardware/toolchain tasks on Windows (install, configure, build, flash,
+> first light, and the on-device features).
+
 ## Prerequisites
 
 1. Install the **Moddable SDK** and the **ESP32 (ESP-IDF) tooling** — follow
