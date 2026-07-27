@@ -121,6 +121,52 @@ watch the bridge and daemon logs for `mode → …`.
 | Flash can't find the port | Confirm `UPLOAD_PORT=COM3`; close anything holding COM3 (Arduino/serial monitors). |
 | Orb never connects | PC and orb on the **same 2.4 GHz** network; `bridge.host` = PC's LAN IP; bridge started with `--host 0.0.0.0`; firewall allows port 3838. |
 | Build can't find `mcconfig` | Reopen the VS Native Tools prompt after setting `Path`; confirm `echo %MODDABLE%`. |
+| Build fails on `tsc` | Moddable transpiles `.ts` via `tsc` — `npm install -g typescript` and ensure `%APPDATA%\npm` is on PATH. |
+| **Speaker screams / loud tone** | The CoreS3 target plays `config.startupSound` on every boot; a **boot-loop replays it**. `manifest.json` sets `startupSound: ""` to disable it, and `main.ts` mutes `globalThis.amp` (AW88298) first thing. If you hit it: `python -m esptool --chip esp32s3 --port COM3 erase_flash`. |
+
+---
+
+## Bring-up status (2026-07-27)
+
+**Working & verified on hardware:**
+- Full toolchain (VS Build Tools, Moddable SDK, ESP-IDF v6.0, esp32s3, `tsc`).
+- Flashing over COM3 (Moddable `balls` example ran; our own firmware flashes).
+- A **minimal firmware runs cleanly** — the current `main.ts` renders a resting
+  "CodeSense / orb · ready" screen. Our TypeScript (main/ui/net/wire/framing)
+  **transpiles and links** fine; fonts (OpenSans 16/20/28) render.
+- The `@codesense/addon-m5` **bridge + emulator work end-to-end** on the PC
+  (that half is done and tested; see `packages/addon-m5`).
+
+### Full HUD: known blocker
+The full HUD entry is preserved in **`main.hud.wip.ts`** (imports `ui.ts` +
+`net.ts`). It is **not** wired into `main.ts` because it currently **aborts at
+XS module-graph prepare time on-device** (deterministic `esp_restart`, before
+any module body runs — no traces, no C backtrace). Bisection with serial traces:
+
+| Test | Result |
+|---|---|
+| `main` = minimal Application only | ✅ runs |
+| `main` + `import 'ui'` (runs ui.ts body) | ✅ runs (`ui: LOADING … styles ok`) |
+| `main` + `import ui, net, config, timer` (no `initHud` call) | ❌ aborts before any trace |
+
+So importing `ui` alone is fine; adding the `net` + `config` + `timer` imports
+to the graph makes it abort during prepare. Increasing the XS `creation` heap
+(`manifest.json`) did **not** help, so it isn't a simple heap size issue.
+
+**Next step — debug with `xsbug` (the interactive debugger, shows the exact
+abort reason):**
+```
+mcconfig -d -m -p esp32/m5stack_cores3
+```
+Point `main.ts`'s imports at the full set (copy `main.hud.wip.ts` over `main.ts`
+temporarily), reproduce, and read the exception/abort in the xsbug window. Prime
+suspects to check there: the `mc/config` module content, a `Behavior` subclass
+detail, or a Piu construct in `initHud` (tabs/center/footer) that faults during
+instantiation. Once fixed, move the HUD back into `main.ts`.
+
+> Console traces in the `-m` build go to xsbug, not always to plain serial. To
+> read plain traces without xsbug: `python -m esptool`-free — just
+> `python - <<'PY'` a pyserial read of COM3 at 115200 (USB-CDC ignores baud).
 
 ---
 

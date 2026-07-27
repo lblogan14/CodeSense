@@ -19,6 +19,8 @@
 import { Application, Skin, Style, Label, Content, Column, Row, Behavior } from 'piu/MC';
 import type { DeviceEvent, HudFrame, WireMode } from 'wire';
 
+trace('ui: LOADING\n');
+
 const WIDTH = 320;
 const HEIGHT = 240;
 
@@ -36,10 +38,12 @@ const MODES: WireMode[] = ['AGENT', 'NAV', 'PROMPT'];
 
 // Bitmap fonts declared in manifest.json resources (*-alpha). Sizes must match
 // the available assets: Regular-16, Regular-20, Semibold-28.
+trace('ui: creating styles\n');
 const styleState = new Style({ font: '600 28px Open Sans', color: COLORS.ink, horizontal: 'center' });
 const styleSub = new Style({ font: '16px Open Sans', color: COLORS.muted, horizontal: 'center' });
 const styleTab = new Style({ font: '16px Open Sans', color: COLORS.muted, horizontal: 'center' });
 const styleBtn = new Style({ font: '20px Open Sans', color: COLORS.ink, horizontal: 'center' });
+trace('ui: styles ok\n');
 
 const skinCache = new Map<string, Skin>();
 function fill(hex: string): Skin {
@@ -123,7 +127,7 @@ function buildFooter(): Row {
     active: true,
     Behavior: MicBehavior,
     style: styleTab,
-    string: '🎤',
+    string: 'mic',
     right: 8,
     width: 40,
     height: 24,
@@ -139,9 +143,18 @@ function buildFooter(): Row {
 /** Create the Application and return it (main.ts sets it as the default export). */
 export function initHud(onEvent: (ev: DeviceEvent) => void): Application {
   send = onEvent;
+  trace('ui: initHud\n');
 
   strip = new Content(null, { left: 0, right: 0, top: 0, height: 4, skin: fill(COLORS.muted) });
+  trace('ui: strip ok\n');
+  const tabsRow = buildTabs();
+  trace('ui: tabs ok\n');
+  const centerCol = buildCenter();
+  trace('ui: center ok\n');
+  const footerRow = buildFooter();
+  trace('ui: footer ok\n');
 
+  trace('ui: application...\n');
   const app = new Application(null, {
     displayListLength: 8192,
     commandListLength: 4096,
@@ -154,10 +167,11 @@ export function initHud(onEvent: (ev: DeviceEvent) => void): Application {
         right: 0,
         top: 0,
         bottom: 0,
-        contents: [strip, buildTabs(), buildCenter(), buildFooter()],
+        contents: [strip, tabsRow, centerCol, footerRow],
       }),
     ],
   });
+  trace('ui: application ok\n');
 
   return app;
 }
