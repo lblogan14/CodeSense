@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CoreS3 emulator · CodeSense</title>
+<style>
+  :root {
+    --bg-base: #0b0d12; --bg-surface: #12151c; --bg-elevated: #1a1e27; --bg-overlay: #232834;
+    --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
+    --text-primary: #e8eaf0; --text-secondary: #9aa3b2; --text-muted: #5c6470; --accent: #3e9bff;
+    --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --tint: #5c6470;
+    --mono: 'Commit Mono','Geist Mono','JetBrains Mono','Cascadia Code',Consolas,ui-monospace,monospace;
+    --sans: 'Geist Sans',Inter,'Segoe UI Variable','Segoe UI',system-ui,sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--sans); font-size: 14px; }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 20px; }
+  header { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .brand { font-weight: 600; letter-spacing: -0.01em; }
+  .brand span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.28em;
+    background: linear-gradient(90deg,#3e9bff,#9d7cff); -webkit-background-clip: text; background-clip: text; color: transparent; margin-left: 8px; }
+  .status { margin-left: auto; display: flex; gap: 10px; align-items: center; font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+  .conn { display: inline-flex; align-items: center; gap: 7px; }
+  .conn .d { width: 8px; height: 8px; border-radius: 50%; background: var(--state-err,#ff5c5c); }
+  .conn.up .d { background: #2fd48a; box-shadow: 0 0 8px #2fd48a; }
+
+  .grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; margin-top: 20px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  /* device */
+  .stage { display: grid; place-items: center; padding: 26px; border-radius: 18px;
+    background: radial-gradient(closest-side at 50% 42%, color-mix(in srgb, var(--tint) 20%, transparent), transparent 70%), var(--bg-surface);
+    border: 1px solid var(--border); transition: background .5s ease; }
+  .device { width: 240px; background: linear-gradient(160deg,#23262e,#16181e); border-radius: 24px; padding: 15px;
+    box-shadow: 0 22px 54px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); position: relative; }
+  .device::after { content:"M5"; position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+    font-family: var(--mono); font-size: 8px; letter-spacing: .24em; color: rgba(255,255,255,.2); }
+  .screen { aspect-ratio: 4/3; border-radius: 11px; overflow: hidden; background: #05070b; display: flex; flex-direction: column;
+    box-shadow: inset 0 0 30px color-mix(in srgb, var(--tint) 26%, transparent); transition: box-shadow .5s ease; }
+  .strip { height: 3px; background: var(--tint); transition: background .35s ease; }
+  .strip.pulse { animation: doublepulse 2s linear infinite; }
+  .strip.breathe { animation: breathe 2.4s ease-in-out infinite; }
+  .tabs { display: flex; gap: 4px; padding: 7px 8px 4px; }
+  .tab { flex: 1; text-align: center; font-family: var(--mono); font-size: 8.5px; font-weight: 600; letter-spacing: .1em;
+    padding: 4px 0; border-radius: 5px; color: var(--text-muted); border: 1px solid transparent; cursor: pointer; transition: all .15s; }
+  .tab.on { color: var(--text-primary); border-color: color-mix(in srgb,var(--accent) 55%,transparent); background: rgba(62,155,255,.1); }
+  .body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 4px 12px; text-align: center; }
+  .st { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .12em; color: var(--tint); display: flex; align-items: center; gap: 7px; transition: color .35s ease; }
+  .st .g { width: 8px; height: 8px; border-radius: 50%; background: var(--tint); box-shadow: 0 0 10px var(--tint); }
+  .sub { font-family: var(--mono); font-size: 9px; color: var(--text-secondary); min-height: 11px; }
+  .permcard { width: 100%; }
+  .toolline { font-family: var(--mono); font-size: 8.5px; color: var(--text-secondary); background: rgba(255,176,32,.08);
+    border: 1px solid rgba(255,176,32,.25); border-radius: 6px; padding: 5px 7px; margin-bottom: 7px; word-break: break-all; }
+  .toolline b { color: #ffb020; }
+  .approve { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+  .ab { font-family: var(--mono); font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    padding: 8px 2px 6px; border-radius: 6px; cursor: pointer; line-height: 1.25; border: 1px solid var(--border-strong);
+    background: var(--bg-elevated); color: var(--text-secondary); transition: transform .1s; }
+  .ab small { display: block; font-size: 6.5px; font-weight: 500; opacity: .75; }
+  .ab:active { transform: scale(.94); }
+  .ab.once { border-color: rgba(47,212,138,.5); color: #86ecc0; background: rgba(47,212,138,.1); }
+  .ab.always { border-color: rgba(62,155,255,.5); color: #bcdcff; background: rgba(62,155,255,.12); }
+  .ab.reject { border-color: rgba(255,92,92,.45); color: #ffb3b3; background: rgba(255,92,92,.1); }
+  .foot { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-top: 1px solid rgba(255,255,255,.05); }
+  .dots { display: flex; gap: 5px; }
+  .sdot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.16); cursor: pointer; }
+  .sdot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .sdot.wait { background: #ffb020; animation: breathe 1.4s ease-in-out infinite; }
+  .fs { margin-left: auto; }
+  .mic { font-family: var(--mono); font-size: 8px; color: var(--text-secondary); cursor: pointer; user-select: none; display: inline-flex; gap: 4px; align-items: center; }
+  .mic.off { color: rgba(255,255,255,.18); cursor: not-allowed; }
+  .mic.hot { color: #ff5c5c; }
+
+  /* controls */
+  .panel { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; }
+  .card h3 { margin: 0 0 11px; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { padding: 7px 12px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--bg-elevated);
+    color: var(--text-primary); font-size: 12px; font-family: var(--sans); cursor: pointer; transition: transform .1s, background .15s; }
+  .btn:hover { background: var(--bg-overlay); }
+  .btn:active { transform: scale(.96); }
+  .btn.mono { font-family: var(--mono); font-size: 11px; }
+  .log { font-family: var(--mono); font-size: 11px; line-height: 1.7; color: var(--text-secondary); max-height: 220px; overflow-y: auto;
+    background: #06080c; border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px 14px; white-space: pre-wrap; word-break: break-word; }
+  .log .t { color: var(--text-muted); margin-right: 8px; }
+  .log .rx { color: #86ecc0; } .log .tx { color: #9ecbff; } .log .sys { color: var(--text-muted); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @keyframes breathe { 0%,100%{opacity:.4} 50%{opacity:1} }
+  @keyframes doublepulse { 0%,7%{opacity:1} 8%,14%{opacity:.4} 15%,22%{opacity:1} 23%,100%{opacity:.4} }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">CoreS3 emulator <span>△ ○ ✕ □</span></div>
+    <div class="status">
+      <span class="conn" id="conn"><span class="d"></span><span id="connlabel">connecting…</span></span>
+      <span id="meta">seq — · backend —</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="stage" id="stage">
+      <div class="device">
+        <div class="screen">
+          <div class="strip" id="strip"></div>
+          <div class="tabs" id="tabs">
+            <div class="tab" data-mode="AGENT">AGENT</div>
+            <div class="tab" data-mode="NAV">NAV</div>
+            <div class="tab" data-mode="PROMPT">PROMPT</div>
+          </div>
+          <div class="body" id="body"></div>
+          <div class="foot">
+            <div class="dots" id="dots"></div>
+            <span class="fs"></span>
+            <span class="mic off" id="mic">🎤 voice</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="card">
+        <h3>Presets</h3>
+        <div class="btns" id="presets"><span class="sub">— none —</span></div>
+      </div>
+      <div class="card">
+        <h3>Standalone controls</h3>
+        <div class="btns">
+          <button class="btn mono" data-ev='{"t":"interrupt"}'>interrupt</button>
+          <button class="btn mono" data-ev='{"t":"rewind"}'>rewind</button>
+          <button class="btn mono" data-ev='{"t":"session","target":"next"}'>session ›</button>
+          <button class="btn mono" data-ev='{"t":"gesture","name":"wake"}'>flick · wake</button>
+          <button class="btn mono" data-ev='{"t":"gesture","name":"shake"}'>shake</button>
+          <button class="btn mono" data-ev='{"t":"gesture","name":"tilt-up"}'>tilt ▲</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Wire log</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var HEX = { disconnected:'#5c6470', idle:'#3e9bff', thinking:'#9d7cff', permission:'#ffb020', done:'#2fd48a', error:'#ff5c5c' };
+  var SUB = { idle:'ready', thinking:'working…', permission:'needs you', done:'finished · fades', error:'tool failed', disconnected:'no backend' };
+  var TONE = { idle:'silent', thinking:'quiet ticks', permission:'rising two-note', done:'soft blip', error:'low buzz', disconnected:'—' };
+  var ANIM = { thinking:'breathe', permission:'pulse' };
+
+  var root = document.documentElement;
+  var el = function (id) { return document.getElementById(id); };
+  var strip = el('strip'), body = el('body'), dots = el('dots'), tabs = el('tabs'),
+      mic = el('mic'), meta = el('meta'), conn = el('conn'), connlabel = el('connlabel'),
+      presetsEl = el('presets'), logEl = el('log');
+
+  var frame = null, ws = null, retry = null, micHot = false;
+  var token = new URLSearchParams(location.search).get('token');
+
+  function stamp() { var d = new Date(); return d.toTimeString().slice(0, 8); }
+  function log(kind, msg) {
+    var line = document.createElement('div');
+    line.innerHTML = '<span class="t">' + stamp() + '</span><span class="' + kind + '">' + msg + '</span>';
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+    while (logEl.childNodes.length > 200) logEl.removeChild(logEl.firstChild);
+  }
+
+  function send(ev) {
+    if (!ws || ws.readyState !== 1) { log('sys', 'not connected — ' + JSON.stringify(ev)); return; }
+    ws.send(JSON.stringify(ev));
+    log('tx', '↑ ' + JSON.stringify(ev));
+  }
+
+  function render() {
+    var f = frame;
+    if (!f) return;
+    var hex = f.hex || HEX[f.state] || '#5c6470';
+    root.style.setProperty('--tint', hex);
+    strip.className = 'strip' + (ANIM[f.state] ? ' ' + ANIM[f.state] : '');
+
+    Array.prototype.forEach.call(tabs.children, function (t) {
+      t.classList.toggle('on', t.getAttribute('data-mode') === f.mode);
+    });
+
+    var html = '';
+    if (f.perm) {
+      html += '<div class="permcard"><div class="toolline"><b>' + (f.perm.tool || 'tool') + '</b>'
+            + (f.perm.detail ? ' · ' + f.perm.detail : '') + '</div>'
+            + '<div class="approve">'
+            + '<button class="ab once" data-approve="once">Approve<small>once</small></button>'
+            + '<button class="ab always" data-approve="always">Always<small>&nbsp;</small></button>'
+            + '<button class="ab reject" data-approve="reject">✕ Reject<small>&nbsp;</small></button>'
+            + '</div></div>';
+    } else {
+      html += '<div class="st"><span class="g"></span>' + String(f.state || '').toUpperCase() + '</div>';
+      html += '<div class="sub">' + (SUB[f.state] || '') + '</div>';
+      html += '<div class="sub" style="opacity:.7">♪ ' + (TONE[f.state] || '') + '</div>';
+    }
+    body.innerHTML = html;
+    Array.prototype.forEach.call(body.querySelectorAll('[data-approve]'), function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-approve');
+        if (k === 'reject') send({ t: 'reject' });
+        else send({ t: 'approve', scope: k });
+      });
+    });
+
+    // session dots (empty for pty)
+    dots.innerHTML = '';
+    (f.sessions || []).forEach(function (s) {
+      var d = document.createElement('span');
+      d.className = 'sdot' + (s.active ? ' active' : '') + (s.waiting ? ' wait' : '');
+      d.title = 'slot ' + s.slot + ' · ' + s.state + (s.label ? ' · ' + s.label : '');
+      d.addEventListener('click', function () { send({ t: 'session', target: s.slot }); });
+      dots.appendChild(d);
+    });
+
+    // mic — pty only
+    var micOk = f.backend === 'pty';
+    mic.className = 'mic' + (micOk ? '' : ' off') + (micHot ? ' hot' : '');
+    mic.textContent = micHot ? '● recording' : '🎤 voice';
+
+    // presets
+    presetsEl.innerHTML = '';
+    if (!f.presets || !f.presets.length) presetsEl.innerHTML = '<span class="sub">— none —</span>';
+    (f.presets || []).forEach(function (p) {
+      var b = document.createElement('button');
+      b.className = 'btn'; b.textContent = p.label;
+      b.addEventListener('click', function () { send({ t: 'preset', id: p.id }); });
+      presetsEl.appendChild(b);
+    });
+
+    meta.textContent = 'seq ' + (f.seq != null ? f.seq : '—') + ' · ' + (f.backend || '—') + (f.needsYou ? ' · NEEDS YOU' : '');
+  }
+
+  // static control wiring
+  Array.prototype.forEach.call(tabs.children, function (t) {
+    t.addEventListener('click', function () { send({ t: 'mode', mode: t.getAttribute('data-mode') }); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-ev]'), function (b) {
+    b.addEventListener('click', function () { send(JSON.parse(b.getAttribute('data-ev'))); });
+  });
+  mic.addEventListener('mousedown', function () {
+    if (!frame || frame.backend !== 'pty') return;
+    micHot = true; render(); send({ t: 'voice', phase: 'pushStart' });
+  });
+  var micUp = function () { if (micHot) { micHot = false; render(); send({ t: 'voice', phase: 'pushEnd' }); } };
+  mic.addEventListener('mouseup', micUp);
+  mic.addEventListener('mouseleave', micUp);
+
+  function connect() {
+    var url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+    ws = new WebSocket(url);
+    ws.onopen = function () {
+      conn.classList.add('up'); connlabel.textContent = 'connected';
+      log('sys', 'connected to ' + url);
+      if (token) { ws.send(JSON.stringify({ t: 'hello', token: token })); log('tx', '↑ hello (token)'); }
+    };
+    ws.onmessage = function (e) {
+      var f; try { f = JSON.parse(e.data); } catch (err) { return; }
+      if (f && f.t === 'hud') { frame = f; log('rx', '↓ ' + f.state + (f.perm ? ' · ' + (f.perm.tool || '') : '')); render(); }
+    };
+    ws.onclose = function () {
+      conn.classList.remove('up'); connlabel.textContent = 'reconnecting…';
+      log('sys', 'disconnected — retrying');
+      clearTimeout(retry); retry = setTimeout(connect, 1000);
+    };
+    ws.onerror = function () { ws.close(); };
+  }
+
+  render();
+  connect();
+})();
+</script>
+</body>
+</html>
