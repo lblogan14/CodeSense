@@ -5,6 +5,15 @@
  * module resolves to the shared bridge types via tsconfig `paths`.
  */
 declare function trace(msg: string): void;
+declare function require(id: string): any;
+
+// XS runtime extensions used by the serial link
+interface ArrayBufferConstructor {
+  fromString(s: string): ArrayBuffer;
+}
+interface StringConstructor {
+  fromArrayBuffer(b: ArrayBuffer): string;
+}
 
 declare module 'wifi' {
   const WiFi: any;

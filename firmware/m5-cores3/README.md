@@ -15,15 +15,20 @@ taps back as `DeviceEvent`s.
 | File | Role |
 |---|---|
 | `main.ts` | entry — wires the network layer to the HUD; default-exports the Piu `Application` |
-| `net.ts` | WiFi + WebSocket client to the bridge |
+| `net.ts` | `BridgeLink` (WiFi + WebSocket) and `SerialLink` (USB-CDC, P2), selected by `config.transport` |
 | `ui.ts` | the Piu HUD (state strip, mode tabs, permission/state view, session dots, mic) |
 | `manifest.json` | Moddable manifest — targets `esp32/m5stack_cores3`, config, module map |
 | `moddable.d.ts` / `tsconfig.json` | editor IntelliSense only (not used at build) |
 
-**Shared protocol types.** `manifest.json` includes the bridge's
-`packages/addon-m5/src/wire.ts` as the `wire` module, so `HudFrame` /
-`DeviceEvent` are defined **once** and used on both sides. `wire.ts` is
-dependency-free on purpose — don't add imports to it.
+**Shared code with the bridge.** `manifest.json` includes the bridge's
+`packages/addon-m5/src/wire.ts` (`HudFrame` / `DeviceEvent`) and `framing.ts`
+(newline-JSON for serial) as the `wire` and `framing` modules, so the protocol
+and framing are defined **once** and used on both sides. Both files are
+dependency-free on purpose — don't add imports to them.
+
+**Transport.** `config.transport` selects `"wifi"` (default, P1) or `"serial"`
+(P2, docked over USB-C). Serial shares `framing.ts` with the bridge's
+`SerialTransport`; run the bridge with `--serial COM3` on the host side.
 
 ## Prerequisites
 

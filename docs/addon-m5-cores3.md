@@ -1,11 +1,12 @@
 # Addon: M5Stack CoreS3 status orb + standalone controller
 
-> **Status:** **P0 built & verified** (2026‑07‑27); **P1 firmware scaffolded**
-> (Moddable/TypeScript, not yet built or flashed); P2–P3 not started. The
-> `packages/addon-m5` bridge, ws transport, browser emulator, and unit tests
-> exist and pass an end-to-end round trip against a live mock daemon; the
-> `firmware/m5-cores3` Moddable project is written and awaits a toolchain
-> install + flash. This is the spec agreed in the 2026‑07‑25 design interview.
+> **Status (2026‑07‑27):** **P0 built & verified**; **P1 firmware scaffolded**
+> (Moddable/TypeScript, awaiting a toolchain install + flash); **P2 serial
+> transport landed** on the bridge (+ firmware serial link, shared framing);
+> P3 in progress. The `packages/addon-m5` bridge, ws + serial transports,
+> browser emulator, and 20 unit tests pass, with an end-to-end round trip
+> verified against a live mock daemon. This is the spec agreed in the
+> 2026‑07‑25 design interview.
 >
 > **Branch:** `feature/addon-support`. This is the first *addon* — a template
 > for how future devices bolt onto CodeSense without touching the core.
@@ -255,19 +256,20 @@ packages/addon-m5/              # the bridge (Node/TS, ESM) — built ✅
     index.ts                    # CLI entry: `codesense-m5`
     bridge.ts                   # daemon ws client + device hub + demo mode
     hud.ts                      # DaemonSnapshot → HudFrame
-    wire.ts                     # SHARED wire types (dependency-free) ← firmware uses this too
+    wire.ts                     # SHARED wire types (dependency-free) ← firmware too
+    framing.ts                  # SHARED newline-JSON framing ← firmware too
     protocol.ts                 # re-exports wire.ts + daemon ClientMessage mapping
     mockDevice.ts               # in-process fake device for tests
-    *.test.ts                   # protocol + hud unit tests (14, passing)
+    *.test.ts                   # protocol + hud + framing unit tests (20, passing)
     transports/
       transport.ts              # Transport interface
       wsTransport.ts            # P1 ws (+ token auth, serves emulator) ✅
-      serialTransport.ts        # P2 (todo)
-      mqttTransport.ts          # P3 (todo)
+      serialTransport.ts        # P2 serial (lazy serialport) ✅
+      mqttTransport.ts          # P3 (in progress)
   emulator/index.html           # P0 browser stand-in for the physical orb ✅
 firmware/m5-cores3/             # Moddable SDK / TypeScript firmware — scaffolded ✅
-  main.ts  net.ts  ui.ts        # glue · wifi+ws · Piu HUD
-  manifest.json                 # targets esp32/m5stack_cores3; includes ../../…/wire
+  main.ts  net.ts  ui.ts        # glue · wifi+ws / serial · Piu HUD
+  manifest.json                 # targets esp32/m5stack_cores3; includes ../../…/{wire,framing}
   moddable.d.ts  tsconfig.json  # editor IntelliSense only
   README.md
 ```
@@ -298,12 +300,19 @@ dim/sleep. `codesense pair` over serial to provision SSID + token.
 **Acceptance:** a physical CoreS3 on WiFi mirrors state and approves a real
 permission in a live pty session.
 
-### P2 — Serial transport + full standalone controller
+### P2 — Serial transport + full standalone controller — ◑ bridge done
 `serialTransport` (docked/offline). Preset palette, voice trigger (pty),
 interrupt/rewind, IMU gestures (wake/shake/tilt), full audio soundscape,
 battery‑aware sleep. Reach standalone parity (drive Claude with no controller).
 **Acceptance:** unplug the DualSense; complete a real task from the orb alone,
 over both WiFi and serial.
+**Landed (host side):** `SerialTransport` (newline‑JSON over USB‑CDC;
+`serialport` loaded lazily so the package builds without the native dep),
+`--serial <path> --baud <n>` on the bridge CLI, and a shared `framing.ts`
+(6 tests). Firmware gained a `SerialLink` selectable via `config.transport`,
+sharing `wire.ts` + `framing.ts`. **Still on hardware:** IMU gestures, audio
+tones, battery‑aware sleep — those wait for the flash and the Moddable
+peripheral‑driver checkpoint (§7).
 
 ### P3 — MQTT + OTA + polish
 `mqttTransport` (fleet/remote). WiFi OTA (signed). `doctor` integration

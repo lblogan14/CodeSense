@@ -62,7 +62,9 @@ export class Bridge {
       t.on('disconnect', ({ deviceId }) =>
         this.log(`device disconnected · ${deviceId} · via ${t.name}`),
       );
-      void t.start();
+      Promise.resolve(t.start()).catch((err) =>
+        this.log(`transport ${t.name} failed to start: ${(err as Error).message}`),
+      );
     }
 
     if (this.opts.demo) {

@@ -10,6 +10,7 @@
     "baseUrl": ".",
     "paths": {
       "wire": ["../../packages/addon-m5/src/wire.ts"],
+      "framing": ["../../packages/addon-m5/src/framing.ts"],
       "ui": ["./ui.ts"],
       "net": ["./net.ts"]
     }

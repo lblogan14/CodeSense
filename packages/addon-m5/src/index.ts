@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 import { Bridge } from './bridge.js';
 import type { PresetDef } from './bridge.js';
 import { WsTransport } from './transports/wsTransport.js';
+import { SerialTransport } from './transports/serialTransport.js';
+import type { Transport } from './transports/transport.js';
 
 interface Args {
   daemon: string;
@@ -23,6 +25,8 @@ interface Args {
   token?: string;
   demo: boolean;
   emulator: boolean;
+  serial?: string;
+  baud: number;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -32,6 +36,7 @@ function parseArgs(argv: string[]): Args {
     host: '127.0.0.1',
     demo: false,
     emulator: true,
+    baud: 115200,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -47,6 +52,12 @@ function parseArgs(argv: string[]): Args {
         break;
       case '--token':
         a.token = argv[++i];
+        break;
+      case '--serial':
+        a.serial = argv[++i];
+        break;
+      case '--baud':
+        a.baud = Number(argv[++i] ?? a.baud);
         break;
       case '--demo':
         a.demo = true;
@@ -73,6 +84,8 @@ function printHelp(): void {
       '  --port <n>       device/emulator port (default 3838)',
       '  --host <addr>    bind address (default 127.0.0.1; use 0.0.0.0 for LAN)',
       '  --token <str>    require devices to authenticate with this token',
+      '  --serial <path>  also serve over USB-CDC serial (e.g. COM3)',
+      '  --baud <n>       serial baud rate (default 115200)',
       '  --demo           synthesize a cycling state; do not connect to a daemon',
       '  --no-emulator    do not serve the browser emulator',
       '',
@@ -107,17 +120,31 @@ function main(): void {
   const staticDir = args.emulator ? findEmulatorDir() : null;
   if (args.emulator && !staticDir) log('emulator dir not found — serving ws only');
 
-  const ws = new WsTransport({
-    port: args.port,
-    host: args.host,
-    token: args.token,
-    staticDir,
-    log,
-  });
+  const transports: Transport[] = [
+    new WsTransport({
+      port: args.port,
+      host: args.host,
+      token: args.token,
+      staticDir,
+      log,
+    }),
+  ];
+
+  if (args.serial) {
+    transports.push(
+      new SerialTransport({
+        path: args.serial,
+        baudRate: args.baud,
+        token: args.token,
+        log,
+      }),
+    );
+    log(`serial transport → ${args.serial} @ ${args.baud}`);
+  }
 
   const bridge = new Bridge({
     daemonUrl: args.daemon,
-    transports: [ws],
+    transports,
     presets: DEFAULT_PRESETS,
     demo: args.demo,
     log,
