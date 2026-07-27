@@ -1,0 +1,33 @@
+{
+  "//": "Moddable SDK manifest for the CodeSense CoreS3 orb (P1 scaffold).",
+  "//build": "mcconfig -d -m -p esp32/m5stack_cores3   (device on COM3)",
+  "include": [
+    "$(MODDABLE)/examples/manifest_base.json",
+    "$(MODDABLE)/examples/manifest_net.json",
+    "$(MODDABLE)/examples/manifest_piu.json",
+    "$(MODULES)/network/websocket/manifest.json"
+  ],
+  "modules": {
+    "main": "./main",
+    "net": "./net",
+    "ui": "./ui",
+    "wire": "../../packages/addon-m5/src/wire"
+  },
+  "config": {
+    "wifi": {
+      "ssid": "YOUR_WIFI_SSID",
+      "password": "YOUR_WIFI_PASSWORD"
+    },
+    "bridge": {
+      "//": "the machine running `codesense-m5` (the bridge) on your LAN",
+      "host": "192.168.1.50",
+      "port": 3838,
+      "token": ""
+    }
+  },
+  "platforms": {
+    "esp32/m5stack_cores3": {
+      "modules": {}
+    }
+  }
+}
