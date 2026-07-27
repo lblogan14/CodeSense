@@ -1,11 +1,13 @@
 {
-  "//": "Moddable SDK manifest for the CodeSense CoreS3 orb (P1 scaffold).",
+  "//": "Moddable SDK manifest for the CodeSense CoreS3 orb.",
   "//build": "mcconfig -d -m -p esp32/m5stack_cores3   (device on COM3)",
+  "//secrets": "WiFi + bridge host live in manifest.local.json (gitignored). Copy manifest.local.example.json to manifest.local.json and fill it in.",
   "include": [
     "$(MODDABLE)/examples/manifest_base.json",
     "$(MODDABLE)/examples/manifest_net.json",
     "$(MODDABLE)/examples/manifest_piu.json",
-    "$(MODULES)/network/websocket/manifest.json"
+    "$(MODULES)/network/websocket/manifest.json",
+    "./manifest.local.json"
   ],
   "modules": {
     "main": "./main",
@@ -16,20 +18,17 @@
   },
   "config": {
     "transport": "wifi",
-    "wifi": {
-      "ssid": "YOUR_WIFI_SSID",
-      "password": "YOUR_WIFI_PASSWORD"
-    },
-    "bridge": {
-      "//": "the machine running `codesense-m5` (the bridge) on your LAN",
-      "host": "192.168.1.50",
-      "port": 3838,
-      "token": ""
-    },
     "serial": {
       "//": "used when transport = 'serial' (orb docked via USB-C)",
       "baud": 921600
     }
+  },
+  "resources": {
+    "*-alpha": [
+      "$(MODDABLE)/examples/assets/fonts/OpenSans-Regular-16",
+      "$(MODDABLE)/examples/assets/fonts/OpenSans-Regular-20",
+      "$(MODDABLE)/examples/assets/fonts/OpenSans-Semibold-28"
+    ]
   },
   "platforms": {
     "esp32/m5stack_cores3": {

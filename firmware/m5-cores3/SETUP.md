@@ -79,12 +79,18 @@ You should see bouncing balls on the orb and traces in `xsbug`. If this works,
 the hard part is done.
 
 ### 5. Configure our firmware
-Find your PC's LAN IP: `ipconfig` → the IPv4 address on your WiFi adapter
-(e.g. `192.168.1.50`). Edit [`manifest.json`](manifest.json) → `config`:
-```jsonc
-"wifi":   { "ssid": "<your 2.4GHz SSID>", "password": "<pass>" },
-"bridge": { "host": "192.168.1.50", "port": 3838, "token": "" }
+WiFi + bridge host go in **`manifest.local.json`** (gitignored — never
+committed). Create it from the template and fill it in:
+```bash
+cp manifest.local.example.json manifest.local.json
 ```
+```jsonc
+// manifest.local.json
+"wifi":   { "ssid": "<your 2.4GHz SSID>", "password": "<pass>" },
+"bridge": { "host": "<your PC LAN IP>", "port": 3838, "token": "" }
+```
+Find your PC's LAN IP with `ipconfig` (the IPv4 on the adapter that shares the
+orb's network).
 > WiFi must be **2.4 GHz** — the ESP32-S3 has no 5 GHz radio.
 
 ### 6. Start the daemon + bridge on the PC (LAN-visible)

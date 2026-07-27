@@ -4,6 +4,9 @@ __REFERENCE__
 node_modules/
 dist/
 dist-pkg/
+
+# firmware local secrets (WiFi credentials, bridge host) — never commit
+firmware/*/manifest.local.json
 packages/cli/README.md
 *.tgz
 *.tsbuildinfo

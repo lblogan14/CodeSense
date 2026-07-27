@@ -34,13 +34,12 @@ const COLORS = {
 
 const MODES: WireMode[] = ['AGENT', 'NAV', 'PROMPT'];
 
-// Font resources must be declared in the manifest; these names are placeholders
-// to line up with whatever you add there.
-const FONT = 'Open Sans';
-const styleState = new Style({ font: `bold 22px ${FONT}`, color: COLORS.ink, horizontal: 'center' });
-const styleSub = new Style({ font: `14px ${FONT}`, color: COLORS.muted, horizontal: 'center' });
-const styleTab = new Style({ font: `12px ${FONT}`, color: COLORS.muted, horizontal: 'center' });
-const styleBtn = new Style({ font: `bold 14px ${FONT}`, color: COLORS.ink, horizontal: 'center' });
+// Bitmap fonts declared in manifest.json resources (*-alpha). Sizes must match
+// the available assets: Regular-16, Regular-20, Semibold-28.
+const styleState = new Style({ font: '600 28px Open Sans', color: COLORS.ink, horizontal: 'center' });
+const styleSub = new Style({ font: '16px Open Sans', color: COLORS.muted, horizontal: 'center' });
+const styleTab = new Style({ font: '16px Open Sans', color: COLORS.muted, horizontal: 'center' });
+const styleBtn = new Style({ font: '20px Open Sans', color: COLORS.ink, horizontal: 'center' });
 
 const skinCache = new Map<string, Skin>();
 function fill(hex: string): Skin {

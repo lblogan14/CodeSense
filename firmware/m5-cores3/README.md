@@ -44,12 +44,22 @@ dependency-free on purpose — don't add imports to them.
 
 ## Configure
 
-Edit `manifest.json` → `config`:
+WiFi credentials and the bridge host live in **`manifest.local.json`**, which is
+**gitignored** so secrets are never committed. Create it from the template:
+
+```bash
+cp manifest.local.example.json manifest.local.json
+```
+
+Then edit `manifest.local.json`:
 
 ```jsonc
-"wifi":   { "ssid": "…", "password": "…" },
+"wifi":   { "ssid": "…", "password": "…" },   // 2.4 GHz only
 "bridge": { "host": "<your PC's LAN IP>", "port": 3838, "token": "" }
 ```
+
+The committed `manifest.json` includes `manifest.local.json` and holds only
+non-secret config (transport, fonts, modules).
 
 `bridge.host` is the machine running the bridge. Because the orb reaches it over
 WiFi, start the bridge bound to the LAN (not just localhost):
