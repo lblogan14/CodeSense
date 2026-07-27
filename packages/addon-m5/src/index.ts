@@ -16,7 +16,9 @@ import { Bridge } from './bridge.js';
 import type { PresetDef } from './bridge.js';
 import { WsTransport } from './transports/wsTransport.js';
 import { SerialTransport } from './transports/serialTransport.js';
+import { MqttTransport } from './transports/mqttTransport.js';
 import type { Transport } from './transports/transport.js';
+import { runDoctor } from './doctor.js';
 
 interface Args {
   daemon: string;
@@ -27,6 +29,8 @@ interface Args {
   emulator: boolean;
   serial?: string;
   baud: number;
+  mqtt?: string;
+  mqttPrefix?: string;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -59,6 +63,12 @@ function parseArgs(argv: string[]): Args {
       case '--baud':
         a.baud = Number(argv[++i] ?? a.baud);
         break;
+      case '--mqtt':
+        a.mqtt = argv[++i];
+        break;
+      case '--mqtt-prefix':
+        a.mqttPrefix = argv[++i];
+        break;
       case '--demo':
         a.demo = true;
         break;
@@ -79,15 +89,21 @@ function printHelp(): void {
     [
       'codesense-m5 — M5Stack CoreS3 addon bridge',
       '',
+      'Usage:',
+      '  codesense-m5 [options]      run the bridge',
+      '  codesense-m5 doctor         check the daemon + list serial ports',
+      '',
       'Options:',
-      '  --daemon <url>   daemon ws url (default ws://127.0.0.1:3737/ws)',
-      '  --port <n>       device/emulator port (default 3838)',
-      '  --host <addr>    bind address (default 127.0.0.1; use 0.0.0.0 for LAN)',
-      '  --token <str>    require devices to authenticate with this token',
-      '  --serial <path>  also serve over USB-CDC serial (e.g. COM3)',
-      '  --baud <n>       serial baud rate (default 115200)',
-      '  --demo           synthesize a cycling state; do not connect to a daemon',
-      '  --no-emulator    do not serve the browser emulator',
+      '  --daemon <url>     daemon ws url (default ws://127.0.0.1:3737/ws)',
+      '  --port <n>         device/emulator port (default 3838)',
+      '  --host <addr>      bind address (default 127.0.0.1; use 0.0.0.0 for LAN)',
+      '  --token <str>      require devices to authenticate with this token',
+      '  --serial <path>    also serve over USB-CDC serial (e.g. COM3)',
+      '  --baud <n>         serial baud rate (default 115200)',
+      '  --mqtt <url>       also serve over MQTT (e.g. mqtt://192.168.1.10:1883)',
+      '  --mqtt-prefix <s>  MQTT topic prefix (default codesense/m5)',
+      '  --demo             synthesize a cycling state; do not connect to a daemon',
+      '  --no-emulator      do not serve the browser emulator',
       '',
     ].join('\n'),
   );
@@ -112,10 +128,21 @@ const DEFAULT_PRESETS: PresetDef[] = [
 ];
 
 function main(): void {
-  const args = parseArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const args = parseArgs(argv);
   const log = (line: string): void => {
     process.stdout.write(`[m5] ${line}\n`);
   };
+
+  if (argv[0] === 'doctor') {
+    void runDoctor({
+      daemonUrl: args.daemon,
+      port: args.port,
+      serial: args.serial,
+      log: (l) => process.stdout.write(`${l}\n`),
+    }).then((code) => process.exit(code));
+    return;
+  }
 
   const staticDir = args.emulator ? findEmulatorDir() : null;
   if (args.emulator && !staticDir) log('emulator dir not found — serving ws only');
@@ -140,6 +167,17 @@ function main(): void {
       }),
     );
     log(`serial transport → ${args.serial} @ ${args.baud}`);
+  }
+
+  if (args.mqtt) {
+    transports.push(
+      new MqttTransport({
+        url: args.mqtt,
+        prefix: args.mqttPrefix,
+        log,
+      }),
+    );
+    log(`mqtt transport → ${args.mqtt} (${args.mqttPrefix ?? 'codesense/m5'})`);
   }
 
   const bridge = new Bridge({

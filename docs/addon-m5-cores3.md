@@ -2,11 +2,13 @@
 
 > **Status (2026‑07‑27):** **P0 built & verified**; **P1 firmware scaffolded**
 > (Moddable/TypeScript, awaiting a toolchain install + flash); **P2 serial
-> transport landed** on the bridge (+ firmware serial link, shared framing);
-> P3 in progress. The `packages/addon-m5` bridge, ws + serial transports,
-> browser emulator, and 20 unit tests pass, with an end-to-end round trip
-> verified against a live mock daemon. This is the spec agreed in the
-> 2026‑07‑25 design interview.
+> transport landed**; **P3 host side landed** (MQTT transport + `doctor` +
+> multi-transport CLI). The `packages/addon-m5` bridge, ws + serial + mqtt
+> transports, browser emulator, and 23 unit tests pass, with an end-to-end
+> round trip verified against a live mock daemon. Remaining before "done":
+> the firmware toolchain install + flash (P1 hardware), on-device peripherals
+> (P2 hardware), and WiFi OTA (P3). This is the spec agreed in the 2026‑07‑25
+> design interview.
 >
 > **Branch:** `feature/addon-support`. This is the first *addon* — a template
 > for how future devices bolt onto CodeSense without touching the core.
@@ -259,13 +261,14 @@ packages/addon-m5/              # the bridge (Node/TS, ESM) — built ✅
     wire.ts                     # SHARED wire types (dependency-free) ← firmware too
     framing.ts                  # SHARED newline-JSON framing ← firmware too
     protocol.ts                 # re-exports wire.ts + daemon ClientMessage mapping
+    doctor.ts                   # `codesense-m5 doctor` diagnostics
     mockDevice.ts               # in-process fake device for tests
-    *.test.ts                   # protocol + hud + framing unit tests (20, passing)
+    *.test.ts                   # protocol + hud + framing + mqtt tests (23, passing)
     transports/
       transport.ts              # Transport interface
       wsTransport.ts            # P1 ws (+ token auth, serves emulator) ✅
       serialTransport.ts        # P2 serial (lazy serialport) ✅
-      mqttTransport.ts          # P3 (in progress)
+      mqttTransport.ts          # P3 mqtt (lazy mqtt, retained frames) ✅
   emulator/index.html           # P0 browser stand-in for the physical orb ✅
 firmware/m5-cores3/             # Moddable SDK / TypeScript firmware — scaffolded ✅
   main.ts  net.ts  ui.ts        # glue · wifi+ws / serial · Piu HUD
@@ -314,9 +317,15 @@ sharing `wire.ts` + `framing.ts`. **Still on hardware:** IMU gestures, audio
 tones, battery‑aware sleep — those wait for the flash and the Moddable
 peripheral‑driver checkpoint (§7).
 
-### P3 — MQTT + OTA + polish
+### P3 — MQTT + OTA + polish — ◑ host side done
 `mqttTransport` (fleet/remote). WiFi OTA (signed). `doctor` integration
 (detects the bridge + orb), docs/profiles for orb presets, multi‑orb support.
+**Landed:** `MqttTransport` (fan-out to any number of orbs via a broker;
+retained HudFrames so a fresh orb renders immediately; `mqtt` lazily loaded,
+3 topic tests), `--mqtt <url>` / `--mqtt-prefix` on the CLI, and
+`codesense-m5 doctor` (daemon reachability + serial-port listing that flags
+the Espressif VID `303A`). **Still pending:** signed WiFi OTA and per-profile
+orb presets, both of which want the device flashed first.
 
 ## 11. Risks & constraints
 
