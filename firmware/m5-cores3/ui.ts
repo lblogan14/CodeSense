@@ -16,7 +16,7 @@
  * (add to manifest `resources`), Skin color string format, and the touch
  * Behavior method signatures for your SDK version. See README.md.
  */
-import { Application, Skin, Style, Label, Content, Column, Row, Behavior } from 'piu/MC';
+import { Application, Skin, Style, Label, Content, Column, Row, Container, Behavior } from 'piu/MC';
 import type { DeviceEvent, HudFrame, WireMode } from 'wire';
 
 trace('ui: LOADING\n');
@@ -79,21 +79,13 @@ class MicBehavior extends Behavior {
   }
 }
 
-/** Whole-screen touch — anything not on a button. Confirms touch + drives demo. */
-class ScreenBehavior extends Behavior {
-  onTouchBegan(_application: object, _id: number, x: number, y: number): void {
-    // The FT6x06 reports phantom touches at the top edge (0,0 / 18,1) at rest;
-    // ignore the top strip (non-interactive) to reject that noise.
-    if (y < 8) return;
-    trace(`orb: touch ${x},${y}\n`);
-    send({ t: 'gesture', name: 'wake' });
-  }
-}
+// (No whole-screen touch handler: the FT6x06 reports phantom touches at rest,
+// so only the specific buttons below — tabs, approve/reject, dots, mic — are
+// active touch targets. That avoids flooding the bridge with phantom gestures.)
 
 // ── content refs updated by render() ────────────────────────────
 let strip: Content;
-let stateLabel: Label;
-let subLabel: Label;
+let centerBox: Container;
 let tabs: Label[] = [];
 let dots: Row;
 let mic: Label;
@@ -121,15 +113,25 @@ function buildTabs(): Row {
   });
 }
 
-function buildCenter(): Column {
-  stateLabel = new Label(null, { style: styleState, string: 'CONNECTING', left: 0, right: 0 });
-  subLabel = new Label(null, { style: styleSub, string: '', left: 0, right: 0 });
-  return new Column(null, {
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    contents: [stateLabel, subLabel],
+function buildCenter(): Container {
+  // Swappable center: state view OR permission view (with approve/reject).
+  // render() → renderCenter() rebuilds its contents on each frame.
+  centerBox = new Container(null, { left: 0, right: 0, top: 0, bottom: 0, contents: [] });
+  return centerBox;
+}
+
+/** An approve/reject touch button carrying its DeviceEvent. */
+function actionButton(label: string, color: string, ev: DeviceEvent): Label {
+  return new Label({ event: ev } as { event: DeviceEvent }, {
+    active: true,
+    Behavior: TapBehavior,
+    style: styleTab,
+    string: label,
+    top: 2,
+    bottom: 2,
+    left: 2,
+    right: 2,
+    skin: fill(color),
   });
 }
 
@@ -171,8 +173,6 @@ export function initHud(onEvent: (ev: DeviceEvent) => void): Application {
     displayListLength: 8192,
     commandListLength: 4096,
     touchCount: 1,
-    active: true,
-    Behavior: ScreenBehavior,
     skin: fill(COLORS.bg),
     style: styleSub,
     contents: [
@@ -199,19 +199,47 @@ export function render(frame: HudFrame): void {
     tabs[i]!.skin = fill(on ? COLORS.accent : COLORS.panel);
   }
 
-  if (frame.perm) {
-    stateLabel.string = (frame.perm.tool ?? 'TOOL').toUpperCase();
-    subLabel.string = frame.perm.detail ?? 'approve?';
-    // NOTE: approve/always/reject buttons render here in the full build;
-    // scaffold shows the request text. Tap targets wired via TapBehavior with
-    // events {t:'approve',scope:'once'|'always'} and {t:'reject'}.
-  } else {
-    stateLabel.string = frame.state.toUpperCase();
-    subLabel.string = subFor(frame.state);
-  }
-
+  renderCenter(frame);
   renderDots(frame);
   mic.state = frame.backend === 'pty' ? 1 : 0; // dim when mic is unavailable
+}
+
+/** Rebuild the center: a permission prompt (with approve/reject) or the state. */
+function renderCenter(frame: HudFrame): void {
+  centerBox.empty();
+  if (frame.perm) {
+    const tool = new Label(null, {
+      style: styleState,
+      string: (frame.perm.tool ?? 'TOOL').toUpperCase(),
+      left: 0, right: 0, height: 30,
+    });
+    const detail = new Label(null, {
+      style: styleSub,
+      string: frame.perm.detail ?? '',
+      left: 0, right: 0, height: 18,
+    });
+    const buttons = new Row(null, {
+      left: 4, right: 4, height: 40,
+      contents: [
+        actionButton('APPROVE', '#2fd48a', { t: 'approve', scope: 'once' }),
+        actionButton('ALWAYS', '#3e9bff', { t: 'approve', scope: 'always' }),
+        actionButton('REJECT', '#ff5c5c', { t: 'reject' }),
+      ],
+    });
+    centerBox.add(
+      new Column(null, { left: 0, right: 0, top: 0, bottom: 0, contents: [tool, detail, buttons] }),
+    );
+  } else {
+    centerBox.add(
+      new Column(null, {
+        left: 0, right: 0, top: 0, bottom: 0,
+        contents: [
+          new Label(null, { style: styleState, string: frame.state.toUpperCase(), left: 0, right: 0 }),
+          new Label(null, { style: styleSub, string: subFor(frame.state), left: 0, right: 0 }),
+        ],
+      }),
+    );
+  }
 }
 
 function renderDots(frame: HudFrame): void {
