@@ -82,6 +82,9 @@ class MicBehavior extends Behavior {
 /** Whole-screen touch — anything not on a button. Confirms touch + drives demo. */
 class ScreenBehavior extends Behavior {
   onTouchBegan(_application: object, _id: number, x: number, y: number): void {
+    // The FT6x06 reports phantom touches at the top edge (0,0 / 18,1) at rest;
+    // ignore the top strip (non-interactive) to reject that noise.
+    if (y < 8) return;
     trace(`orb: touch ${x},${y}\n`);
     send({ t: 'gesture', name: 'wake' });
   }

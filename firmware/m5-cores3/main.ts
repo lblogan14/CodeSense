@@ -6,7 +6,7 @@
  * Application instance is the module's default export, which Moddable runs.
  */
 import { initHud, render } from 'ui';
-import { SerialLink, DemoLink } from 'links';
+import { BridgeLink, SerialLink, DemoLink } from 'links';
 import type { Link } from 'links';
 import config from 'mc/config';
 import Timer from 'timer';
@@ -51,11 +51,15 @@ const onStatus = (online: boolean): void => {
   }
 };
 
-// transport: "serial" (wired, TODO) | "demo"/default (on-device state cycle).
-// WiFi (BridgeLink) is preserved in bridgelink.wip.ts — see SETUP.md blocker.
+// transport: "demo" (on-device cycle) | "serial" (wired, TODO) |
+// "wifi"/default (BridgeLink — WebSocket to the bridge; WiFi via setup/network).
 const transport = (config as { transport?: string }).transport;
 const link: Link =
-  transport === 'serial' ? new SerialLink(onFrame, onStatus) : new DemoLink(onFrame, onStatus);
+  transport === 'demo'
+    ? new DemoLink(onFrame, onStatus)
+    : transport === 'serial'
+      ? new SerialLink(onFrame, onStatus)
+      : new BridgeLink(onFrame, onStatus);
 
 let application: unknown;
 try {

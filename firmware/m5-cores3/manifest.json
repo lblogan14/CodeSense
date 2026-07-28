@@ -2,10 +2,11 @@
   "//": "Moddable SDK manifest for the CodeSense CoreS3 orb.",
   "//build": "mcconfig -d -m -p esp32/m5stack_cores3   (device on COM3)",
   "//secrets": "WiFi + bridge host live in manifest.local.json (gitignored). Copy manifest.local.example.json to manifest.local.json and fill it in.",
-  "//net": "manifest_net + websocket omitted: re-enabling the network stack boot-crashes at XS prepare (see bridgelink.wip.ts / SETUP.md). Add them back when WiFi is fixed.",
+  "//net": "websocket manifest pulls in manifest_net (net/socket/sntp + setup/network's ECMA-419 WiFi). We do NOT include the legacy `wifi` module — BridgeLink is websocket-only and lets setup/network own WiFi (loading both WiFi drivers boot-crashed XS prepare).",
   "include": [
     "$(MODDABLE)/examples/manifest_base.json",
     "$(MODDABLE)/examples/manifest_piu.json",
+    "$(MODULES)/network/websocket/manifest.json",
     "./manifest.local.json"
   ],
   "//modules": "our device-link module is 'links', NOT 'net' — 'net' is a preloaded Moddable builtin and collides (duplicate net.xsb → prepare-time XS abort).",

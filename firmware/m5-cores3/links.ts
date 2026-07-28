@@ -12,9 +12,17 @@
  * builtin and collides (a duplicate net.xsb aborts XS at prepare time).
  */
 import Timer from 'timer';
+import { Client } from 'websocket';
+import config from 'mc/config';
 import type { DeviceEvent, HudFrame, WireAgentState } from 'wire';
 
 trace('links: LOADING\n');
+
+interface BridgeCfg {
+  bridge: { host: string; port: number; token: string };
+}
+const cfg = config as unknown as BridgeCfg;
+const RECONNECT_MS = 2000;
 
 export type FrameHandler = (frame: HudFrame) => void;
 export type StatusHandler = (online: boolean) => void;
@@ -23,6 +31,76 @@ export type StatusHandler = (online: boolean) => void;
 export interface Link {
   start(): void;
   send(ev: DeviceEvent): void;
+}
+
+/**
+ * WiFi bridge link — WebSocket ONLY. WiFi association is handled by Moddable's
+ * `setup/network` preload (it reads config.ssid/password and uses the ECMA-419
+ * WiFi driver). We deliberately do NOT import the legacy `wifi` module — loading
+ * both WiFi drivers is what boot-crashed the network stack at XS prepare. We
+ * just retry the WebSocket to the bridge until WiFi is up and it's reachable.
+ */
+export class BridgeLink implements Link {
+  private ws: Client | undefined;
+  private online = false;
+
+  constructor(
+    private readonly onFrame: FrameHandler,
+    private readonly onStatus: StatusHandler,
+  ) {}
+
+  start(): void {
+    trace('bridge: will connect once WiFi is up\n');
+    this.connectWs();
+  }
+
+  send(ev: DeviceEvent): void {
+    if (this.ws && this.online) this.ws.write(JSON.stringify(ev));
+  }
+
+  private connectWs(): void {
+    const { host, port, token } = cfg.bridge;
+    try {
+      const ws = new Client({ host, port, path: '/' });
+      this.ws = ws;
+      ws.callback = (message: number, value?: unknown): void => {
+        switch (message) {
+          case Client.handshake:
+            this.setOnline(true);
+            trace('bridge: connected\n');
+            if (token) this.send({ t: 'hello', token });
+            break;
+          case Client.receive:
+            this.onReceive(value as string);
+            break;
+          case Client.disconnect:
+            this.setOnline(false);
+            this.ws = undefined;
+            Timer.set(() => this.connectWs(), RECONNECT_MS);
+            break;
+        }
+      };
+    } catch {
+      // WiFi not up yet (no IP) — retry
+      Timer.set(() => this.connectWs(), RECONNECT_MS);
+    }
+  }
+
+  private onReceive(raw: string): void {
+    let frame: HudFrame | undefined;
+    try {
+      frame = JSON.parse(raw) as HudFrame;
+    } catch {
+      return;
+    }
+    if (frame && frame.t === 'hud') this.onFrame(frame);
+  }
+
+  private setOnline(v: boolean): void {
+    if (this.online === v) return;
+    this.online = v;
+    this.onStatus(v);
+  }
 }
 
 /**
