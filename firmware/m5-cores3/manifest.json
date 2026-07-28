@@ -2,7 +2,7 @@
   "//": "Moddable SDK manifest for the CodeSense CoreS3 orb.",
   "//build": "mcconfig -d -m -p esp32/m5stack_cores3   (device on COM3)",
   "//secrets": "WiFi + bridge host live in manifest.local.json (gitignored). Copy manifest.local.example.json to manifest.local.json and fill it in.",
-  "//net": "manifest_net.json + websocket intentionally omitted while WiFi is deferred — including manifest_net auto-runs setup/network (WiFi join) at boot.",
+  "//net": "manifest_net + websocket omitted: re-enabling the network stack boot-crashes at XS prepare (see bridgelink.wip.ts / SETUP.md). Add them back when WiFi is fixed.",
   "include": [
     "$(MODDABLE)/examples/manifest_base.json",
     "$(MODDABLE)/examples/manifest_piu.json",
@@ -31,7 +31,7 @@
       "$(MODDABLE)/examples/assets/fonts/OpenSans-Semibold-28"
     ]
   },
-  "//creation": "override the CoreS3 target's small fixed XS heap (4928, incremental 0) so the fuller module graph can allocate + grow.",
+  "//creation": "override the CoreS3 target's small fixed XS heap (4928, incremental 0) so the fuller module graph (incl. the network stack) can allocate + grow.",
   "creation": {
     "static": 0,
     "chunk": { "initial": 131072, "incremental": 32768 },

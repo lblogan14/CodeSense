@@ -23,6 +23,12 @@ try {
 
 trace('orb: main start\n');
 
+// diagnostic: is the CoreS3 touch driver registered for Piu?
+{
+  const g = globalThis as unknown as { device?: { sensor?: { Touch?: unknown } } };
+  trace(`orb: touch-setup device=${!!g.device} sensor.Touch=${!!(g.device?.sensor?.Touch)}\n`);
+}
+
 let latest: HudFrame | undefined;
 
 const onFrame = (frame: HudFrame): void => {
@@ -46,7 +52,7 @@ const onStatus = (online: boolean): void => {
 };
 
 // transport: "serial" (wired, TODO) | "demo"/default (on-device state cycle).
-// WiFi/BridgeLink is deferred (see links.ts).
+// WiFi (BridgeLink) is preserved in bridgelink.wip.ts — see SETUP.md blocker.
 const transport = (config as { transport?: string }).transport;
 const link: Link =
   transport === 'serial' ? new SerialLink(onFrame, onStatus) : new DemoLink(onFrame, onStatus);

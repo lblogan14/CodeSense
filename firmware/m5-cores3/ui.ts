@@ -63,7 +63,7 @@ class TapBehavior extends Behavior {
   onCreate(_content: object, data: { event: DeviceEvent }): void {
     this.event = data.event;
   }
-  onTouchEnded(content: { string?: string }): void {
+  onTouchEnded(): void {
     trace(`orb: tap ${JSON.stringify(this.event)}\n`);
     send(this.event);
   }

@@ -1,14 +1,15 @@
 /**
- * Device links for the CoreS3 orb.
+ * Device links for the CoreS3 orb:
+ *   - DemoLink   — on-device state cycle, no host (config.transport = "demo").
+ *   - SerialLink — wired over USB-CDC (TODO on this board).
  *
- * WiFi is deferred, so the network link (BridgeLink over WebSocket) is omitted
- * for now — importing `wifi`/`websocket` also pulls in Moddable's `setup/network`
- * preload, which tries to join WiFi at boot. The firmware currently runs the
- * on-device DemoLink, or SerialLink once the wired path is built.
+ * BridgeLink (WiFi + WebSocket) is preserved in bridgelink.wip.ts — re-enabling
+ * the network stack currently boot-crashes at XS prepare time (see SETUP.md
+ * "WiFi transport: known blocker"), so it's kept out of the compiled graph.
  *
- * To re-enable WiFi later: add `manifest_net.json` + the websocket manifest back
- * to manifest.json, restore the `wifi`/`websocket` imports, and reinstate a
- * BridgeLink (see git history of this file).
+ * Wire types come from the shared `wire` module (defined once, with the bridge).
+ * This module is named `links`, NOT `net` — `net` is a preloaded Moddable
+ * builtin and collides (a duplicate net.xsb aborts XS at prepare time).
  */
 import Timer from 'timer';
 import type { DeviceEvent, HudFrame, WireAgentState } from 'wire';
@@ -18,7 +19,7 @@ trace('links: LOADING\n');
 export type FrameHandler = (frame: HudFrame) => void;
 export type StatusHandler = (online: boolean) => void;
 
-/** Common shape for every device link (demo today; serial / WiFi later). */
+/** Common shape for every device link. */
 export interface Link {
   start(): void;
   send(ev: DeviceEvent): void;
@@ -52,10 +53,12 @@ export class SerialLink implements Link {
 /**
  * On-device demo link — no host needed. Cycles the agent states on a timer so
  * the HUD (colors, fonts, tabs, animation) can be validated on the real screen.
- * Select with `config.transport = "demo"`.
+ * A tap jumps to the next state and pauses the auto-cycle (unmistakable touch
+ * feedback). Select with `config.transport = "demo"`.
  */
 export class DemoLink implements Link {
   private i = 0;
+  private timer: unknown;
 
   constructor(
     private readonly onFrame: FrameHandler,
@@ -65,14 +68,23 @@ export class DemoLink implements Link {
   start(): void {
     this.onStatus(true);
     this.tick();
-    Timer.repeat(() => this.tick(), 2600);
+    this.schedule(2600);
   }
 
   send(ev: DeviceEvent): void {
-    // In demo mode any tap/interaction jumps to the next state — this makes the
-    // touchscreen visibly responsive and confirms touch is working.
-    trace(`orb: demo advance (${ev.t})\n`);
+    // A tap jumps to the next state NOW and pauses the auto-cycle ~5s, so the
+    // touch is unmistakable — the cycling visibly stops when you touch.
+    trace(`orb: demo TAP (${ev.t}) -> jump + pause\n`);
     this.tick();
+    this.schedule(5000);
+  }
+
+  private schedule(ms: number): void {
+    if (this.timer) Timer.clear(this.timer as never);
+    this.timer = Timer.set(() => {
+      this.tick();
+      this.schedule(2600);
+    }, ms);
   }
 
   private tick(): void {
