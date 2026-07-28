@@ -130,43 +130,28 @@ watch the bridge and daemon logs for `mode → …`.
 
 **Working & verified on hardware:**
 - Full toolchain (VS Build Tools, Moddable SDK, ESP-IDF v6.0, esp32s3, `tsc`).
-- Flashing over COM3 (Moddable `balls` example ran; our own firmware flashes).
-- A **minimal firmware runs cleanly** — the current `main.ts` renders a resting
-  "CodeSense / orb · ready" screen. Our TypeScript (main/ui/net/wire/framing)
-  **transpiles and links** fine; fonts (OpenSans 16/20/28) render.
+- Flashing over COM3 (Moddable `balls` example ran; our firmware flashes).
+- **The full HUD runs on-device.** `main.ts` builds the Piu HUD (state strip,
+  AGENT/NAV/PROMPT tabs, state/permission view, session dots, mic) and, with
+  `config.transport = "demo"`, cycles idle → thinking → permission → done →
+  error on the real screen. Fonts (OpenSans 16/20/28) render.
 - The `@codesense/addon-m5` **bridge + emulator work end-to-end** on the PC
   (that half is done and tested; see `packages/addon-m5`).
 
-### Full HUD: known blocker
-The full HUD entry is preserved in **`main.hud.wip.ts`** (imports `ui.ts` +
-`net.ts`). It is **not** wired into `main.ts` because it currently **aborts at
-XS module-graph prepare time on-device** (deterministic `esp_restart`, before
-any module body runs — no traces, no C backtrace). Bisection with serial traces:
+### ⚠️ Gotcha that cost us: do not name a module `net`
+Our device-link module was originally `net.ts` → module **`net`**, which is a
+**preloaded Moddable builtin** (network info, `modules/network/net`, pulled in by
+`manifest_base`). Two modules compiling to `net.xsb` produced a silent
+`NMAKE : warning U4004: too many rules for target …net.xsb`, and at runtime
+`import … from 'net'` resolved to the wrong module → XS **aborted at module-graph
+prepare time** (deterministic `esp_restart`, before any code ran, no C
+backtrace). Symptom: importing `ui` alone worked, but adding the link module
+killed it. **Fix:** renamed it to **`links.ts`** (module `links`). Avoid other
+builtin names too (`net`, `timer`, `wifi`, `websocket`, `socket`, `mqtt`, …).
 
-| Test | Result |
-|---|---|
-| `main` = minimal Application only | ✅ runs |
-| `main` + `import 'ui'` (runs ui.ts body) | ✅ runs (`ui: LOADING … styles ok`) |
-| `main` + `import ui, net, config, timer` (no `initHud` call) | ❌ aborts before any trace |
-
-So importing `ui` alone is fine; adding the `net` + `config` + `timer` imports
-to the graph makes it abort during prepare. Increasing the XS `creation` heap
-(`manifest.json`) did **not** help, so it isn't a simple heap size issue.
-
-**Next step — debug with `xsbug` (the interactive debugger, shows the exact
-abort reason):**
-```
-mcconfig -d -m -p esp32/m5stack_cores3
-```
-Point `main.ts`'s imports at the full set (copy `main.hud.wip.ts` over `main.ts`
-temporarily), reproduce, and read the exception/abort in the xsbug window. Prime
-suspects to check there: the `mc/config` module content, a `Behavior` subclass
-detail, or a Piu construct in `initHud` (tabs/center/footer) that faults during
-instantiation. Once fixed, move the HUD back into `main.ts`.
-
-> Console traces in the `-m` build go to xsbug, not always to plain serial. To
-> read plain traces without xsbug: `python -m esptool`-free — just
-> `python - <<'PY'` a pyserial read of COM3 at 115200 (USB-CDC ignores baud).
+> Tip: `fxAbort` prints `XS abort: <reason>` to the console (xsPlatform.c). A
+> plain `pyserial` read of COM3 at 115200 (USB-CDC ignores baud) catches it —
+> and watch the build log for `too many rules for target` name collisions.
 
 ---
 

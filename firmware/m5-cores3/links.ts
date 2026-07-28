@@ -13,7 +13,7 @@
 import Timer from 'timer';
 import type { DeviceEvent, HudFrame, WireAgentState } from 'wire';
 
-trace('net: LOADING\n');
+trace('links: LOADING\n');
 
 export type FrameHandler = (frame: HudFrame) => void;
 export type StatusHandler = (online: boolean) => void;

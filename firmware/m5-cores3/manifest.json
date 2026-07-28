@@ -8,9 +8,10 @@
     "$(MODDABLE)/examples/manifest_piu.json",
     "./manifest.local.json"
   ],
+  "//modules": "our device-link module is 'links', NOT 'net' — 'net' is a preloaded Moddable builtin and collides (duplicate net.xsb → prepare-time XS abort).",
   "modules": {
     "main": "./main",
-    "net": "./net",
+    "links": "./links",
     "ui": "./ui",
     "wire": "../../packages/addon-m5/src/wire",
     "framing": "../../packages/addon-m5/src/framing"
