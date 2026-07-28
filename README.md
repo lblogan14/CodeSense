@@ -123,6 +123,27 @@ Served by the daemon at `localhost:3737`: a live mirror of the pad, the agent-st
   <img alt="CodeSense dashboard" src="docs/assets/dashboard.png" width="820">
 </p>
 
+## ◐ the CoreS3 orb — a second surface (experimental addon)
+
+A stock **M5Stack CoreS3** (a ~$50 ESP32‑S3 kit with a 2″ capacitive‑touch screen) becomes a **glanceable status orb** and, eventually, a **standalone touch controller** for Claude Code — a peer of the DualSense that shares none of its code. The agent's state *is* the screen: idle blue → thinking purple → amber "needs you" → done green → error red.
+
+It's a fully **decoupled addon** — it never imports `@codesense/hid` and doesn't modify the daemon:
+
+- **`@codesense/addon-m5`** — a bridge that connects to the daemon over localhost exactly like the dashboard, turns snapshots into a slim HUD frame, and maps touch events onto the same actions the controller uses. Pluggable transports (WiFi / USB‑serial / MQTT).
+- **`firmware/m5-cores3`** — the orb firmware, also in **TypeScript** (Moddable SDK), sharing the wire types with the bridge so the protocol is defined once.
+
+**Try it now, no hardware** — the browser emulator is a faithful stand‑in for the orb:
+
+```powershell
+node packages/cli/dist/index.js start --mock --backend sdk   # a daemon
+node packages/addon-m5/dist/index.js                          # bridge + emulator
+# open http://127.0.0.1:3838/  — tap approve/reject, switch modes, fire presets
+```
+
+**On the device** — flash the firmware (full Windows toolchain walkthrough in [firmware/m5-cores3/SETUP.md](firmware/m5-cores3/SETUP.md)). **Status:** the HUD renders on the real 320×240 touch screen and cycles the agent states, and the touchscreen is live (tap to interact). The live device↔agent **transport** (wired/WiFi) is in progress — full design in [docs/addon-m5-cores3.md](docs/addon-m5-cores3.md).
+
+> **Heads-up if you flash it:** the CoreS3 plays a startup chime; a boot‑loop can replay it loudly. The firmware disables it and mutes the amp, but if a build ever screams, stop it with `python -m esptool --chip esp32s3 --port COM3 erase_flash`.
+
 ## how it works
 
 ```
@@ -159,6 +180,7 @@ Published on npm as [`@binliu14/code-sense`](https://www.npmjs.com/package/@binl
 - [ ] quota / self-set budget gauge — ambient cost warning on the lightbar
 - [ ] more agent backends: GitHub Copilot CLI (nearly Claude-compatible hooks), opencode, Codex CLI — see [docs/platforms.md](docs/platforms.md)
 - [ ] per-project profiles (`.codesense.json`)
+- [ ] **CoreS3 orb**: live device↔agent transport (wired/WiFi) + on-screen approve/reject — the addon HUD renders + touch works today; see [docs/addon-m5-cores3.md](docs/addon-m5-cores3.md)
 - [ ] macOS / Linux field testing
 - [ ] DualSense Edge paddles & function buttons
 

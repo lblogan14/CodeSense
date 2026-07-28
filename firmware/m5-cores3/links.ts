@@ -68,8 +68,11 @@ export class DemoLink implements Link {
     Timer.repeat(() => this.tick(), 2600);
   }
 
-  send(_ev: DeviceEvent): void {
-    /* demo is display-only */
+  send(ev: DeviceEvent): void {
+    // In demo mode any tap/interaction jumps to the next state — this makes the
+    // touchscreen visibly responsive and confirms touch is working.
+    trace(`orb: demo advance (${ev.t})\n`);
+    this.tick();
   }
 
   private tick(): void {

@@ -63,7 +63,8 @@ class TapBehavior extends Behavior {
   onCreate(_content: object, data: { event: DeviceEvent }): void {
     this.event = data.event;
   }
-  onTouchEnded(): void {
+  onTouchEnded(content: { string?: string }): void {
+    trace(`orb: tap ${JSON.stringify(this.event)}\n`);
     send(this.event);
   }
 }
@@ -75,6 +76,14 @@ class MicBehavior extends Behavior {
   }
   onTouchEnded(): void {
     send({ t: 'voice', phase: 'pushEnd' });
+  }
+}
+
+/** Whole-screen touch — anything not on a button. Confirms touch + drives demo. */
+class ScreenBehavior extends Behavior {
+  onTouchBegan(_application: object, _id: number, x: number, y: number): void {
+    trace(`orb: touch ${x},${y}\n`);
+    send({ t: 'gesture', name: 'wake' });
   }
 }
 
@@ -159,6 +168,8 @@ export function initHud(onEvent: (ev: DeviceEvent) => void): Application {
     displayListLength: 8192,
     commandListLength: 4096,
     touchCount: 1,
+    active: true,
+    Behavior: ScreenBehavior,
     skin: fill(COLORS.bg),
     style: styleSub,
     contents: [
