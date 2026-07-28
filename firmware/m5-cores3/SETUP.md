@@ -126,17 +126,43 @@ watch the bridge and daemon logs for `mode → …`.
 
 ---
 
-## Bring-up status (2026-07-27)
+## Bring-up status (2026-07-28) — LIVE over WiFi ✅
 
 **Working & verified on hardware:**
 - Full toolchain (VS Build Tools, Moddable SDK, ESP-IDF v6.0, esp32s3, `tsc`).
 - Flashing over COM3 (Moddable `balls` example ran; our firmware flashes).
-- **The full HUD runs on-device.** `main.ts` builds the Piu HUD (state strip,
-  AGENT/NAV/PROMPT tabs, state/permission view, session dots, mic) and, with
-  `config.transport = "demo"`, cycles idle → thinking → permission → done →
-  error on the real screen. Fonts (OpenSans 16/20/28) render.
-- The `@codesense/addon-m5` **bridge + emulator work end-to-end** on the PC
-  (that half is done and tested; see `packages/addon-m5`).
+- **The full HUD runs on-device** — state strip, AGENT/NAV/PROMPT tabs, the
+  state/permission view with APPROVE/ALWAYS/REJECT buttons, dots, mic. Fonts
+  (OpenSans 16/20/28) render. Touch works (with a 400ms tap debounce).
+- **Live over WiFi.** `transport:"wifi"` (default): the orb joins WiFi via
+  Moddable's `setup/network` (top-level `ssid`/`password`), connects the
+  WebSocket to the bridge (`bridge.host:port`), renders live agent state, and
+  sends taps (approve/reject/mode) back to the daemon. Verified: bridge logs
+  `device connected · dev1`.
+- `config.transport` also supports `"demo"` (on-device state cycle, no host).
+- The `@codesense/addon-m5` **bridge + emulator** work end-to-end on the PC.
+
+**Go live:** put `transport:"wifi"` + top-level `ssid`/`password` + `bridge.host`
+(PC LAN IP) in the gitignored `manifest.local.json`, flash, then on the PC run
+`node packages/cli/dist/index.js start` **and**
+`node packages/addon-m5/dist/index.js --host 0.0.0.0`.
+
+### Two hard-won gotchas
+1. **`BridgeLink` must be WebSocket-only.** It must NOT `import WiFi from "wifi"`
+   (legacy) — Moddable's `setup/network` already associates WiFi with the
+   ECMA-419 driver. Loading both WiFi drivers → deterministic `esp_restart` at
+   XS module-graph prepare (before any code; no console abort — it's on the
+   xsbug channel). Let `setup/network` own WiFi; the link just retries the ws.
+2. **After every flash, verify the build actually flashed** — `grep 'error TS'`
+   == 0 AND `Hash of data verified` present. A silent `tsc` failure leaves the
+   OLD firmware running while the screen looks fine (this cost hours).
+
+### ⚠️ Gotcha that cost us: do not name a module `net`
+Our device-link module was originally `net.ts` → module **`net`**, which is a
+**preloaded Moddable builtin** (network info, `modules/network/net`, pulled in by
+`manifest_base`). Two modules compiling to `net.xsb` produced a silent
+`NMAKE : warning U4004: too many rules for target …net.xsb`, and at runtime
+`import … from 'net'` resolved to the wrong module → XS **aborted at module-graph
 
 ### ⚠️ Gotcha that cost us: do not name a module `net`
 Our device-link module was originally `net.ts` → module **`net`**, which is a

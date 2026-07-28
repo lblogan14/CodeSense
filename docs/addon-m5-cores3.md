@@ -1,14 +1,15 @@
 # Addon: M5Stack CoreS3 status orb + standalone controller
 
-> **Status (2026‑07‑27):** **P0 built & verified**; **P1 firmware scaffolded**
-> (Moddable/TypeScript, awaiting a toolchain install + flash); **P2 serial
-> transport landed**; **P3 host side landed** (MQTT transport + `doctor` +
-> multi-transport CLI). The `packages/addon-m5` bridge, ws + serial + mqtt
-> transports, browser emulator, and 23 unit tests pass, with an end-to-end
-> round trip verified against a live mock daemon. Remaining before "done":
-> the firmware toolchain install + flash (P1 hardware), on-device peripherals
-> (P2 hardware), and WiFi OTA (P3). This is the spec agreed in the 2026‑07‑25
-> design interview.
+> **Status (2026‑07‑28): LIVE over WiFi on real hardware.** The CoreS3
+> firmware (Moddable/TypeScript) is flashed and running: it joins WiFi via
+> `setup/network`, connects a WebSocket to the `@codesense/addon-m5` bridge,
+> renders live agent state on the 320×240 touch screen, and sends on-screen
+> **APPROVE / ALWAYS / REJECT** + mode-tab taps back to the daemon. Host side
+> (P0–P3): bridge + ws/serial/mqtt transports + `doctor` + browser emulator +
+> 23 unit tests. See `firmware/m5-cores3/SETUP.md` for the build/flash recipe
+> and the hard-won gotchas (WebSocket-only WiFi link; don't name a module
+> `net`; verify each flash). Remaining: USB-serial transport, IMU gestures,
+> audio tones, WiFi OTA, and touch calibration for an FT6x06 phantom.
 >
 > **Branch:** `feature/addon-support`. This is the first *addon* — a template
 > for how future devices bolt onto CodeSense without touching the core.
