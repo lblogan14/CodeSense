@@ -17,6 +17,7 @@
  * Behavior method signatures for your SDK version. See README.md.
  */
 import { Application, Skin, Style, Label, Content, Column, Row, Container, Behavior } from 'piu/MC';
+import Time from 'time';
 import type { DeviceEvent, HudFrame, WireMode } from 'wire';
 
 trace('ui: LOADING\n');
@@ -57,6 +58,12 @@ function fill(hex: string): Skin {
 
 let send: (ev: DeviceEvent) => void = () => undefined;
 
+// Debounce: reject taps that land within TAP_DEBOUNCE_MS of the last accepted
+// one — kills FT6x06 touch bounce and back-to-back phantom fires (an important
+// guard for the approve/reject buttons).
+const TAP_DEBOUNCE_MS = 400;
+let lastTapTicks = -TAP_DEBOUNCE_MS;
+
 /** Tap → emit a fixed DeviceEvent (mode tabs, approve buttons, session dots). */
 class TapBehavior extends Behavior {
   private event!: DeviceEvent;
@@ -64,6 +71,9 @@ class TapBehavior extends Behavior {
     this.event = data.event;
   }
   onTouchEnded(): void {
+    const now = Time.ticks;
+    if (now - lastTapTicks < TAP_DEBOUNCE_MS) return;
+    lastTapTicks = now;
     trace(`orb: tap ${JSON.stringify(this.event)}\n`);
     send(this.event);
   }

@@ -26,6 +26,13 @@ declare module 'timer' {
   const Timer: any;
   export default Timer;
 }
+declare module 'time' {
+  const Time: any;
+  export default Time;
+}
+declare module 'websocket' {
+  export const Client: any;
+}
 declare module 'mc/config' {
   const config: any;
   export default config;

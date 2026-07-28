@@ -140,7 +140,14 @@ node packages/addon-m5/dist/index.js                          # bridge + emulato
 # open http://127.0.0.1:3838/  — tap approve/reject, switch modes, fire presets
 ```
 
-**On the device** — flash the firmware (full Windows toolchain walkthrough in [firmware/m5-cores3/SETUP.md](firmware/m5-cores3/SETUP.md)). **Status:** the HUD renders on the real 320×240 touch screen and cycles the agent states, and the touchscreen is live (tap to interact). The live device↔agent **transport** (wired/WiFi) is in progress — full design in [docs/addon-m5-cores3.md](docs/addon-m5-cores3.md).
+**On the device — working over WiFi.** Flash the firmware (full Windows toolchain walkthrough in [firmware/m5-cores3/SETUP.md](firmware/m5-cores3/SETUP.md)), put your 2.4 GHz WiFi + PC IP in the gitignored `manifest.local.json`, then:
+
+```powershell
+node packages/cli/dist/index.js start                 # your Claude session (daemon on :3737)
+node packages/addon-m5/dist/index.js --host 0.0.0.0   # bridge, visible on the LAN
+```
+
+The orb joins WiFi, connects to the bridge, and shows your **live** agent state on the 320×240 screen — idle/thinking/**amber “needs you”**. When Claude asks to run a tool, tap **APPROVE / ALWAYS / REJECT** right on the glass. Full design + status in [docs/addon-m5-cores3.md](docs/addon-m5-cores3.md).
 
 > **Heads-up if you flash it:** the CoreS3 plays a startup chime; a boot‑loop can replay it loudly. The firmware disables it and mutes the amp, but if a build ever screams, stop it with `python -m esptool --chip esp32s3 --port COM3 erase_flash`.
 
@@ -180,7 +187,8 @@ Published on npm as [`@binliu14/code-sense`](https://www.npmjs.com/package/@binl
 - [ ] quota / self-set budget gauge — ambient cost warning on the lightbar
 - [ ] more agent backends: GitHub Copilot CLI (nearly Claude-compatible hooks), opencode, Codex CLI — see [docs/platforms.md](docs/platforms.md)
 - [ ] per-project profiles (`.codesense.json`)
-- [ ] **CoreS3 orb**: live device↔agent transport (wired/WiFi) + on-screen approve/reject — the addon HUD renders + touch works today; see [docs/addon-m5-cores3.md](docs/addon-m5-cores3.md)
+- [x] **CoreS3 orb**: live over WiFi — HUD shows real agent state + on-screen approve/reject/mode on the touchscreen ([docs/addon-m5-cores3.md](docs/addon-m5-cores3.md)). Next: USB-serial transport, IMU gestures, audio tones
+- [ ] CoreS3 orb polish: touch debounce/calibration, session dots + preset prompts, `/voice` mic (pty)
 - [ ] macOS / Linux field testing
 - [ ] DualSense Edge paddles & function buttons
 
