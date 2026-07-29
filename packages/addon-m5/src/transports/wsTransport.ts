@@ -41,9 +41,12 @@ interface ClientRec {
 // NOTE: no ws ping/pong heartbeat here. Moddable's websocket Client replies to
 // a ping with an UNMASKED pong (websocket.js: "//@@ implement masking"), which
 // this RFC-6455 server rejects as a protocol violation and closes — so pinging
-// a Moddable device deterministically thrashes its connection. Dead sockets are
-// detected via TCP close instead; the orb's own WiFi auto-reconnect keeps drops
-// brief. Do NOT reintroduce a heartbeat unless the firmware masks control frames.
+// a Moddable device deterministically thrashes its connection. Instead we keep
+// the connection observable with an application-level KEEPALIVE FRAME (a normal
+// server→client data frame — no masking rules apply): re-send the last HudFrame
+// when the stream goes quiet, so the device can detect a dead socket by a gap in
+// received frames (see BridgeLink's rx-watchdog in the firmware).
+const KEEPALIVE_MS = 4000;
 
 export class WsTransport extends Transport {
   readonly name = 'ws';
@@ -52,6 +55,8 @@ export class WsTransport extends Transport {
   private clients = new Map<WebSocket, ClientRec>();
   private lastFrame: HudFrame | null = null;
   private nextId = 1;
+  private keepalive: ReturnType<typeof setInterval> | null = null;
+  private lastSentAt = 0;
 
   constructor(private opts: WsTransportOptions) {
     super();
@@ -70,6 +75,23 @@ export class WsTransport extends Transport {
     this.wss.on('connection', (socket) => this.onConnection(socket));
     this.server.listen(this.opts.port, host);
     this.log(`listening on http://${host}:${this.opts.port}  (ws + emulator)`);
+
+    // Keepalive: when no fresh frame has gone out for KEEPALIVE_MS, re-send the
+    // last one so devices can distinguish "quiet" from "dead" (see note above).
+    this.keepalive = setInterval(() => {
+      if (!this.lastFrame) return;
+      if (Date.now() - this.lastSentAt < KEEPALIVE_MS) return;
+      this.sendFrame(this.lastFrame);
+    }, KEEPALIVE_MS);
+  }
+
+  /** Send a frame to every authed client and record the time (for keepalive). */
+  private sendFrame(frame: HudFrame): void {
+    const data = JSON.stringify(frame);
+    for (const [socket, rec] of this.clients) {
+      if (rec.authed && socket.readyState === WebSocket.OPEN) socket.send(data);
+    }
+    this.lastSentAt = Date.now();
   }
 
   private serveStatic(req: http.IncomingMessage, res: http.ServerResponse): void {
@@ -140,13 +162,14 @@ export class WsTransport extends Transport {
 
   broadcast(frame: HudFrame): void {
     this.lastFrame = frame;
-    const data = JSON.stringify(frame);
-    for (const [socket, rec] of this.clients) {
-      if (rec.authed && socket.readyState === WebSocket.OPEN) socket.send(data);
-    }
+    this.sendFrame(frame);
   }
 
   stop(): void {
+    if (this.keepalive) {
+      clearInterval(this.keepalive);
+      this.keepalive = null;
+    }
     for (const socket of this.clients.keys()) socket.close();
     this.clients.clear();
     this.wss?.close();

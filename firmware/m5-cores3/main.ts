@@ -68,24 +68,25 @@ const onStatus = (online: boolean): void => {
 // transport: "demo" (on-device cycle) | "serial" (wired, TODO) |
 // "wifi"/default (BridgeLink — WebSocket to the bridge; WiFi via setup/network).
 const transport = (config as { transport?: string }).transport;
-const link: Link =
-  transport === 'demo'
-    ? new DemoLink(onFrame, onStatus)
-    : transport === 'serial'
-      ? new SerialLink(onFrame, onStatus)
-      : new BridgeLink(onFrame, onStatus);
 
 // WiFi self-heal: setup/network connects once then closes its monitor, so a
-// dropped link never re-associates. For the wifi (BridgeLink) transport, keep a
-// live monitor that re-connects on every drop; on drop, show DISCONNECTED at
-// once instead of waiting for the websocket to notice.
-const wifiWatch: WifiWatch | undefined =
-  transport === 'demo' || transport === 'serial'
-    ? undefined
-    : new WifiWatch(
-        () => trace('orb: wifi link up\n'),
-        () => onStatus(false),
-      );
+// dropped link never re-associates and the (now-dead) websocket goes half-open.
+// For the wifi transport, keep a live WiFi monitor and wire it to the link: a
+// drop tears the socket down (and shows DISCONNECTED); a WiFi-up reconnects it.
+let link: Link;
+let wifiWatch: WifiWatch | undefined;
+if (transport === 'demo') {
+  link = new DemoLink(onFrame, onStatus);
+} else if (transport === 'serial') {
+  link = new SerialLink(onFrame, onStatus);
+} else {
+  const bridge = new BridgeLink(onFrame, onStatus);
+  link = bridge;
+  wifiWatch = new WifiWatch(
+    () => bridge.onWifiUp(),
+    () => bridge.onWifiDown(),
+  );
+}
 
 let application: unknown;
 try {

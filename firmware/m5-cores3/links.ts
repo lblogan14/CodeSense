@@ -12,6 +12,7 @@
  * builtin and collides (a duplicate net.xsb aborts XS at prepare time).
  */
 import Timer from 'timer';
+import Time from 'time';
 import { Client } from 'websocket';
 import WiFi from 'embedded:network/interface/wifi';
 import config from 'mc/config';
@@ -24,6 +25,12 @@ interface BridgeCfg {
 }
 const cfg = config as unknown as BridgeCfg;
 const RECONNECT_MS = 2000;
+// The bridge sends a keepalive HudFrame every few seconds, so a receive gap
+// means the socket is dead (WiFi drop / half-open / bridge gone) even though
+// Moddable's Client hasn't noticed — no ws ping needed (its pong is unmasked
+// and would be rejected; see wsTransport.ts).
+const RX_STALE_MS = 13000;
+const WATCHDOG_MS = 5000;
 
 export type FrameHandler = (frame: HudFrame) => void;
 export type StatusHandler = (online: boolean) => void;
@@ -44,6 +51,10 @@ export interface Link {
 export class BridgeLink implements Link {
   private ws: Client | undefined;
   private online = false;
+  private generation = 0; // bumped on every (re)connect to fence stale callbacks
+  private reconnectTimer: unknown;
+  private lastRxTicks = 0;
+  private gotFirstFrame = false;
 
   constructor(
     private readonly onFrame: FrameHandler,
@@ -53,6 +64,15 @@ export class BridgeLink implements Link {
   start(): void {
     trace('bridge: will connect once WiFi is up\n');
     this.connectWs();
+    // Receive-watchdog: a gap in the bridge's keepalive frames means the socket
+    // is dead even though Moddable's Client hasn't noticed — force a reconnect.
+    Timer.repeat(() => {
+      if (!this.online || !this.gotFirstFrame) return;
+      if (Time.ticks - this.lastRxTicks > RX_STALE_MS) {
+        trace('bridge: rx stale — reconnecting\n');
+        this.reconnect();
+      }
+    }, WATCHDOG_MS);
   }
 
   send(ev: DeviceEvent): void {
@@ -66,31 +86,85 @@ export class BridgeLink implements Link {
     }
   }
 
+  /** WiFi dropped: the socket is dead even if the Client hasn't noticed. Tear it
+   *  down and wait for {@link onWifiUp}. */
+  onWifiDown(): void {
+    this.closeWs();
+    this.setOnline(false);
+    this.clearReconnect();
+  }
+
+  /** WiFi came back: reconnect now instead of waiting for a retry tick. */
+  onWifiUp(): void {
+    if (this.ws) return;
+    this.clearReconnect();
+    this.connectWs();
+  }
+
+  private reconnect(): void {
+    this.closeWs();
+    this.setOnline(false);
+    this.scheduleReconnect();
+  }
+
+  private closeWs(): void {
+    this.generation++; // supersede any in-flight callbacks from the old Client
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        /* ignore */
+      }
+      this.ws = undefined;
+    }
+  }
+
+  private clearReconnect(): void {
+    if (this.reconnectTimer) {
+      Timer.clear(this.reconnectTimer as never);
+      this.reconnectTimer = undefined;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) return; // at most one pending attempt
+    this.reconnectTimer = Timer.set(() => {
+      this.reconnectTimer = undefined;
+      this.connectWs();
+    }, RECONNECT_MS);
+  }
+
   private connectWs(): void {
+    this.closeWs(); // never hold two sockets (the old "2 total" phantom)
+    const myGen = this.generation;
     const { host, port, token } = cfg.bridge;
     try {
       const ws = new Client({ host, port, path: '/' });
       this.ws = ws;
       ws.callback = (message: number, value?: unknown): void => {
+        if (myGen !== this.generation) return; // superseded Client — drop its events
         switch (message) {
           case Client.handshake:
+            this.lastRxTicks = Time.ticks;
             this.setOnline(true);
             trace('bridge: connected\n');
             if (token) this.send({ t: 'hello', token });
             break;
           case Client.receive:
+            this.lastRxTicks = Time.ticks;
+            this.gotFirstFrame = true;
             this.onReceive(value as string);
             break;
           case Client.disconnect:
             this.setOnline(false);
             this.ws = undefined;
-            Timer.set(() => this.connectWs(), RECONNECT_MS);
+            this.scheduleReconnect();
             break;
         }
       };
     } catch {
       // WiFi not up yet (no IP) — retry
-      Timer.set(() => this.connectWs(), RECONNECT_MS);
+      this.scheduleReconnect();
     }
   }
 
