@@ -19,6 +19,12 @@ declare module 'wifi' {
   const WiFi: any;
   export default WiFi;
 }
+// ECMA-419 WiFi driver (the one setup/network uses). Adding a monitor on THIS
+// driver is safe; the legacy `wifi` module above must NOT also be loaded.
+declare module 'embedded:network/interface/wifi' {
+  const WiFi: any;
+  export default WiFi;
+}
 declare module 'websocket' {
   export const Client: any;
 }

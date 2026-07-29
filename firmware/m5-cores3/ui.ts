@@ -64,18 +64,69 @@ let send: (ev: DeviceEvent) => void = () => undefined;
 const TAP_DEBOUNCE_MS = 400;
 let lastTapTicks = -TAP_DEBOUNCE_MS;
 
+// Optimistic mode: when a mode tab is tapped we highlight it immediately AND
+// "pin" it, so a stale in-flight daemon frame (still carrying the OLD mode)
+// can't revert the highlight before the daemon catches up. That revert-then-
+// reapply flicker is what still felt laggy after the first optimistic fix.
+let pendingMode: string | undefined;
+let pendingSince = 0;
+const PENDING_MODE_TIMEOUT_MS = 2500;
+
+// The mode currently shown (daemon-confirmed or optimistic). The FT6x06 emits
+// phantom touches at rest; re-selecting the mode you're already in just spams
+// the daemon and thrashes the link, so we drop those.
+let currentMode = 'AGENT';
+
 /** Tap → emit a fixed DeviceEvent (mode tabs, approve buttons, session dots). */
 class TapBehavior extends Behavior {
   private event!: DeviceEvent;
+  private down = false;
   onCreate(_content: object, data: { event: DeviceEvent }): void {
     this.event = data.event;
   }
-  onTouchEnded(): void {
+  onTouchBegan(_content: Content, _id: number, _x: number, _y: number, _ticks: number): void {
+    this.down = true;
+  }
+  onTouchEnded(_content: Content, _id: number, x: number, y: number, _ticks: number): void {
+    // A real tap is a began→ended pair on the same target. A phantom 'ended'
+    // with no matching 'began' (FT6x06 noise) is dropped.
+    const wasDown = this.down;
+    this.down = false;
+    if (!wasDown) {
+      trace(`orb: phantom-end @${x},${y}\n`);
+      return;
+    }
     const now = Time.ticks;
     if (now - lastTapTicks < TAP_DEBOUNCE_MS) return;
+    // Drop redundant re-selection of the mode we're already in (phantom guard).
+    if (this.event.t === 'mode' && this.event.mode === currentMode) return;
     lastTapTicks = now;
-    trace(`orb: tap ${JSON.stringify(this.event)}\n`);
+    if (this.event.t === 'mode') {
+      currentMode = this.event.mode;
+      pendingMode = this.event.mode;
+      pendingSince = now;
+      highlightTabs(this.event.mode); // instant, and pinned until the daemon confirms
+    }
+    trace(`orb: tap ${JSON.stringify(this.event)} @${x},${y}\n`);
     send(this.event);
+  }
+}
+
+// Distinct color per mode so the selected tab tells you which mode you're in at
+// a glance. (On the DualSense, mode is signaled by player-LED flash count —
+// AGENT=1, NAV=2, PROMPT=3; the orb uses hue instead.)
+const MODE_TAB_COLOR: Record<string, string> = {
+  AGENT: '#3e9bff', // blue
+  NAV: '#22c3a6', // teal
+  PROMPT: '#c07cff', // violet
+};
+
+/** Highlight the active mode tab in its mode color. Used by render() + on tap. */
+function highlightTabs(mode: string): void {
+  for (let i = 0; i < tabs.length; i++) {
+    const label = tabs[i]!;
+    const on = label.string === mode;
+    label.skin = fill(on ? (MODE_TAB_COLOR[label.string] ?? COLORS.accent) : COLORS.panel);
   }
 }
 
@@ -101,24 +152,25 @@ let dots: Row;
 let mic: Label;
 
 function buildTabs(): Row {
+  // Explicit full-width cells so the whole third of the screen is the touch
+  // target — a bare Label sizes to its text (~50px), which was too small to hit.
+  const tabW = Math.floor(WIDTH / MODES.length);
   tabs = MODES.map(
     (mode) =>
       new Label({ event: { t: 'mode', mode } } as { event: DeviceEvent }, {
         active: true,
         Behavior: TapBehavior,
-        style: styleTab,
+        style: styleBtn,
         string: mode,
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0,
+        width: tabW,
+        height: 46,
         skin: fill(COLORS.panel),
       }),
   );
   return new Row(null, {
     left: 0,
     right: 0,
-    height: 24,
+    height: 46,
     contents: tabs,
   });
 }
@@ -204,10 +256,18 @@ export function initHud(onEvent: (ev: DeviceEvent) => void): Application {
 export function render(frame: HudFrame): void {
   strip.skin = fill(frame.hex);
 
-  for (let i = 0; i < tabs.length; i++) {
-    const on = tabs[i]!.string === frame.mode;
-    tabs[i]!.skin = fill(on ? COLORS.accent : COLORS.panel);
+  // Honor an optimistic pending mode until the daemon confirms it (or we time
+  // out), so a stale in-flight frame can't flicker the highlight back.
+  let shownMode: string = frame.mode;
+  if (pendingMode !== undefined) {
+    if (frame.mode === pendingMode || Time.ticks - pendingSince > PENDING_MODE_TIMEOUT_MS) {
+      pendingMode = undefined;
+    } else {
+      shownMode = pendingMode;
+    }
   }
+  highlightTabs(shownMode);
+  currentMode = shownMode; // keep the phantom-guard in sync with what's shown
 
   renderCenter(frame);
   renderDots(frame);

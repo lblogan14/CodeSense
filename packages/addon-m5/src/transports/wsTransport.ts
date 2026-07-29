@@ -38,6 +38,13 @@ interface ClientRec {
   authed: boolean;
 }
 
+// NOTE: no ws ping/pong heartbeat here. Moddable's websocket Client replies to
+// a ping with an UNMASKED pong (websocket.js: "//@@ implement masking"), which
+// this RFC-6455 server rejects as a protocol violation and closes — so pinging
+// a Moddable device deterministically thrashes its connection. Dead sockets are
+// detected via TCP close instead; the orb's own WiFi auto-reconnect keeps drops
+// brief. Do NOT reintroduce a heartbeat unless the firmware masks control frames.
+
 export class WsTransport extends Transport {
   readonly name = 'ws';
   private server: http.Server | null = null;

@@ -13,6 +13,7 @@
  */
 import Timer from 'timer';
 import { Client } from 'websocket';
+import WiFi from 'embedded:network/interface/wifi';
 import config from 'mc/config';
 import type { DeviceEvent, HudFrame, WireAgentState } from 'wire';
 
@@ -55,7 +56,14 @@ export class BridgeLink implements Link {
   }
 
   send(ev: DeviceEvent): void {
-    if (this.ws && this.online) this.ws.write(JSON.stringify(ev));
+    if (!this.ws || !this.online) return;
+    // A failed write must not tear down the link (a phantom-tap burst could
+    // otherwise overflow the send buffer and drop the socket).
+    try {
+      this.ws.write(JSON.stringify(ev));
+    } catch (e) {
+      trace(`bridge: write failed ${e}\n`);
+    }
   }
 
   private connectWs(): void {
@@ -100,6 +108,77 @@ export class BridgeLink implements Link {
     if (this.online === v) return;
     this.online = v;
     this.onStatus(v);
+  }
+}
+
+/**
+ * Keeps WiFi associated so a dropped link self-heals.
+ *
+ * Moddable's `setup/network` connects ONCE at boot and then `close()`s its WiFi
+ * monitor — so when the link later drops, nothing re-associates and the orb goes
+ * dark until a manual reboot. This monitor stays alive for the life of the app
+ * and re-issues `connect()` on every disconnect.
+ *
+ * It uses the SAME ECMA-419 driver `setup/network` uses (the C side keeps a list
+ * of WiFi objects on one shared radio, so a second monitor is safe). Do NOT add
+ * the legacy `wifi` module alongside it — loading two WiFi *drivers* is what
+ * boot-crashed XS prepare (see SETUP.md).
+ */
+export class WifiWatch {
+  private w: { connect(options: object): void } | undefined;
+  private readonly opts: object;
+  private retry: unknown;
+
+  constructor(
+    private readonly onUp: () => void,
+    private readonly onDown: () => void,
+  ) {
+    const c = config as { ssid?: string; password?: string };
+    this.opts = c.password ? { SSID: c.ssid, password: c.password, secure: true } : { SSID: c.ssid };
+  }
+
+  start(): void {
+    const self = this;
+    try {
+      this.w = new WiFi({
+        onChanged(this: { connection: number; address?: string }): void {
+          const c = this.connection;
+          if (c >= 500) {
+            trace(`wifi: up (${this.address ?? '?'})\n`);
+            self.clearRetry();
+            self.onUp();
+          } else if (c <= 200) {
+            trace('wifi: dropped — re-associating\n');
+            self.onDown();
+            self.scheduleReconnect();
+          }
+          // 300 (connecting) / 400 (associated, no IP yet): transient, ignore.
+        },
+      });
+      trace('wifi: watch armed\n');
+    } catch (e) {
+      trace(`wifi: watch init failed: ${e}\n`);
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.retry) return; // at most one pending attempt
+    this.retry = Timer.set(() => {
+      this.retry = undefined;
+      try {
+        this.w?.connect(this.opts);
+      } catch (e) {
+        trace(`wifi: reconnect err ${e}\n`);
+        this.scheduleReconnect();
+      }
+    }, RECONNECT_MS);
+  }
+
+  private clearRetry(): void {
+    if (this.retry) {
+      Timer.clear(this.retry as never);
+      this.retry = undefined;
+    }
   }
 }
 
