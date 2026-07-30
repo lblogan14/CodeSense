@@ -89,8 +89,15 @@ export function deviceEventToClientMessage(ev: DeviceEvent): DaemonOutMessage | 
           return { type: 'palette-close' };
       }
       return null;
-    case 'hello':
     case 'gesture':
+      // The device emits raw gestures; the bridge assigns their semantics here.
+      switch (ev.name) {
+        case 'shake':
+          return { type: 'action', action: { type: 'interrupt' } }; // shake = dismiss/stop
+        default:
+          return null; // wake / tilt-* — no daemon effect yet
+      }
+    case 'hello':
       return null;
   }
 }

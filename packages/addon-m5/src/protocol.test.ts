@@ -85,9 +85,14 @@ test('palette ops map to their client messages', () => {
   });
 });
 
-test('hello and bare gestures have no daemon-side effect', () => {
+test('hello has no daemon-side effect; gestures map by name', () => {
   assert.equal(deviceEventToClientMessage({ t: 'hello', token: 'x' }), null);
-  assert.equal(deviceEventToClientMessage({ t: 'gesture', name: 'shake' }), null);
+  // shake = dismiss/stop → interrupt; wake/tilt have no daemon effect yet
+  assert.deepEqual(deviceEventToClientMessage({ t: 'gesture', name: 'shake' }), {
+    type: 'action',
+    action: { type: 'interrupt' },
+  });
+  assert.equal(deviceEventToClientMessage({ t: 'gesture', name: 'wake' }), null);
 });
 
 test('parseDeviceEvent rejects malformed input', () => {

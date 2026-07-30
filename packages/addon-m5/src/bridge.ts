@@ -145,8 +145,11 @@ export class Bridge {
     // design question (see docs/addon-m5-cores3.md §12).
     if (ev.t === 'gesture') {
       this.log(`gesture · ${ev.name} · from ${deviceId}`);
-      if (this.opts.demo && ev.name === 'shake') this.advanceDemo();
-      return;
+      if (this.opts.demo) {
+        if (ev.name === 'shake') this.advanceDemo();
+        return;
+      }
+      // non-demo: fall through so deviceEventToClientMessage maps it to an action
     }
 
     // resolve a preset's text before mapping
