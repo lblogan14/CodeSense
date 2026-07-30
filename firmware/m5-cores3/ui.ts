@@ -34,6 +34,7 @@ const COLORS = {
   accent: '#3e9bff',
   once: '#2fd48a',
   reject: '#ff5c5c',
+  pressed: '#ffffff', // brief flash on tap (press feedback)
 };
 
 const MODES: WireMode[] = ['AGENT', 'NAV', 'PROMPT'];
@@ -83,13 +84,23 @@ let currentMode = 'AGENT';
 class TapBehavior extends Behavior {
   private event!: DeviceEvent;
   private down = false;
+  private savedSkin: unknown;
   onCreate(_content: object, data: { event: DeviceEvent }): void {
     this.event = data.event;
   }
-  onTouchBegan(_content: Content, _id: number, _x: number, _y: number, _ticks: number): void {
+  onTouchBegan(content: Content, _id: number, _x: number, _y: number, _ticks: number): void {
     this.down = true;
+    // press feedback: flash the button white so a tap is unmistakable (the mic
+    // shows its own red state; every other tap button gets the flash here).
+    this.savedSkin = (content as { skin?: unknown }).skin;
+    (content as { skin?: unknown }).skin = fill(COLORS.pressed);
   }
-  onTouchEnded(_content: Content, _id: number, x: number, y: number, _ticks: number): void {
+  onTouchEnded(content: Content, _id: number, x: number, y: number, _ticks: number): void {
+    // un-flash — render()/highlightTabs sets the final skin right after.
+    if (this.savedSkin !== undefined) {
+      (content as { skin?: unknown }).skin = this.savedSkin;
+      this.savedSkin = undefined;
+    }
     // A real tap is a began→ended pair on the same target. A phantom 'ended'
     // with no matching 'began' (FT6x06 noise) is dropped.
     const wasDown = this.down;

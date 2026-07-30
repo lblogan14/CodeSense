@@ -68,9 +68,13 @@
   .sdot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
   .sdot.wait { background: #ffb020; animation: breathe 1.4s ease-in-out infinite; }
   .fs { margin-left: auto; }
-  .mic { font-family: var(--mono); font-size: 8px; color: var(--text-secondary); cursor: pointer; user-select: none; display: inline-flex; gap: 4px; align-items: center; }
-  .mic.off { color: rgba(255,255,255,.18); cursor: not-allowed; }
-  .mic.hot { color: #ff5c5c; }
+  .mic { font-family: var(--mono); font-size: 8px; font-weight: 700; letter-spacing: .04em; color: #86ecc0;
+    background: rgba(47,212,138,.16); padding: 5px 9px; border-radius: 5px; cursor: pointer; user-select: none; }
+  .mic.off { color: rgba(255,255,255,.2); background: rgba(255,255,255,.05); cursor: not-allowed; }
+  .mic.hot { color: #fff; background: #ff5c5c; }
+  .send { font-family: var(--mono); font-size: 8px; font-weight: 700; letter-spacing: .04em; color: #05070b;
+    background: var(--accent); padding: 5px 10px; border-radius: 5px; cursor: pointer; user-select: none; margin-left: 6px; }
+  .send:active { transform: scale(.9); filter: brightness(1.5); }
 
   /* controls */
   .panel { display: flex; flex-direction: column; gap: 16px; }
@@ -116,7 +120,8 @@
           <div class="foot">
             <div class="dots" id="dots"></div>
             <span class="fs"></span>
-            <span class="mic off" id="mic">🎤 voice</span>
+            <span class="mic off" id="mic">MIC · pty</span>
+            <span class="send" id="send">SEND</span>
           </div>
         </div>
       </div>
@@ -149,6 +154,7 @@
 <script>
 (function () {
   var HEX = { disconnected:'#5c6470', idle:'#3e9bff', thinking:'#9d7cff', permission:'#ffb020', done:'#2fd48a', error:'#ff5c5c' };
+  var MODE_COLORS = { AGENT:'#3e9bff', NAV:'#22c3a6', PROMPT:'#c07cff' }; // match firmware MODE_TAB_COLOR
   var SUB = { idle:'ready', thinking:'working…', permission:'needs you', done:'finished · fades', error:'tool failed', disconnected:'no backend' };
   var TONE = { idle:'silent', thinking:'quiet ticks', permission:'rising two-note', done:'soft blip', error:'low buzz', disconnected:'—' };
   var ANIM = { thinking:'breathe', permission:'pulse' };
@@ -185,7 +191,15 @@
     strip.className = 'strip' + (ANIM[f.state] ? ' ' + ANIM[f.state] : '');
 
     Array.prototype.forEach.call(tabs.children, function (t) {
-      t.classList.toggle('on', t.getAttribute('data-mode') === f.mode);
+      var m = t.getAttribute('data-mode');
+      var on = m === f.mode;
+      t.classList.toggle('on', on);
+      if (on) {
+        var c = MODE_COLORS[m] || '#3e9bff';
+        t.style.color = '#05070b'; t.style.background = c; t.style.borderColor = c;
+      } else {
+        t.style.color = ''; t.style.background = ''; t.style.borderColor = '';
+      }
     });
 
     var html = '';
@@ -224,7 +238,7 @@
     // mic — pty only
     var micOk = f.backend === 'pty';
     mic.className = 'mic' + (micOk ? '' : ' off') + (micHot ? ' hot' : '');
-    mic.textContent = micHot ? '● recording' : '🎤 voice';
+    mic.textContent = micHot ? '● LISTENING' : (micOk ? 'HOLD TO TALK' : 'MIC · pty');
 
     // presets
     presetsEl.innerHTML = '';
@@ -253,6 +267,7 @@
   var micUp = function () { if (micHot) { micHot = false; render(); send({ t: 'voice', phase: 'pushEnd' }); } };
   mic.addEventListener('mouseup', micUp);
   mic.addEventListener('mouseleave', micUp);
+  el('send').addEventListener('click', function () { send({ t: 'send' }); });
 
   function connect() {
     var url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
