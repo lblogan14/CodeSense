@@ -18,6 +18,7 @@
  */
 import { Application, Skin, Style, Label, Content, Column, Row, Container, Behavior } from 'piu/MC';
 import Time from 'time';
+import Timer from 'timer';
 import type { DeviceEvent, HudFrame, WireMode } from 'wire';
 
 trace('ui: LOADING\n');
@@ -44,6 +45,7 @@ const styleState = new Style({ font: '600 28px Open Sans', color: COLORS.ink, ho
 const styleSub = new Style({ font: '16px Open Sans', color: COLORS.muted, horizontal: 'center' });
 const styleTab = new Style({ font: '16px Open Sans', color: COLORS.muted, horizontal: 'center' });
 const styleBtn = new Style({ font: '20px Open Sans', color: COLORS.ink, horizontal: 'center' });
+const styleMic = new Style({ font: '16px Open Sans', color: COLORS.ink, horizontal: 'center' });
 trace('ui: styles ok\n');
 
 const skinCache = new Map<string, Skin>();
@@ -130,13 +132,51 @@ function highlightTabs(mode: string): void {
   }
 }
 
-/** Push-to-talk: press = pushStart, release = pushEnd. */
+// Mic button state: enabled only on the pty backend; red while held.
+let micPressed = false;
+let micEnabled = false;
+let micReleaseTimer: unknown; // coalesce FT6x06 touch flicker into one hold
+const MIC_RELEASE_DEBOUNCE_MS = 200;
+
+/** Repaint the mic button for its enabled/held state. */
+function paintMic(): void {
+  if (micPressed) {
+    mic.skin = fill('#ff3b30'); // recording red
+    mic.string = '● LISTENING';
+  } else if (micEnabled) {
+    mic.skin = fill(COLORS.once); // green — ready to talk
+    mic.string = 'HOLD TO TALK';
+  } else {
+    mic.skin = fill(COLORS.panel); // dim — voice needs the pty backend
+    mic.string = 'MIC · pty only';
+  }
+}
+
+/** Push-to-talk with flicker coalescing: the FT6x06 drops/regains contact
+ *  mid-hold; a touch that reappears within MIC_RELEASE_DEBOUNCE_MS of a release
+ *  is treated as the SAME hold, so we don't spam pushStart/pushEnd. */
 class MicBehavior extends Behavior {
-  onTouchBegan(): void {
+  onTouchBegan(_content: Content, _id: number, x: number, y: number, _ticks: number): void {
+    if (micReleaseTimer) {
+      Timer.clear(micReleaseTimer as never); // flicker — still holding
+      micReleaseTimer = undefined;
+      return;
+    }
+    if (micPressed) return;
+    micPressed = true;
+    paintMic();
+    trace(`orb: mic down @${x},${y}\n`);
     send({ t: 'voice', phase: 'pushStart' });
   }
-  onTouchEnded(): void {
-    send({ t: 'voice', phase: 'pushEnd' });
+  onTouchEnded(_content: Content, _id: number, _x: number, _y: number, _ticks: number): void {
+    if (!micPressed || micReleaseTimer) return;
+    // defer release; a quick re-began (flicker) cancels it
+    micReleaseTimer = Timer.set(() => {
+      micReleaseTimer = undefined;
+      micPressed = false;
+      paintMic();
+      send({ t: 'voice', phase: 'pushEnd' });
+    }, MIC_RELEASE_DEBOUNCE_MS);
   }
 }
 
@@ -198,20 +238,23 @@ function actionButton(label: string, color: string, ev: DeviceEvent): Label {
 }
 
 function buildFooter(): Row {
-  dots = new Row(null, { left: 8, height: 24, contents: [] });
+  dots = new Row(null, { left: 8, height: 28, contents: [] });
+  // Big push-to-talk button (a bare label was too small to hit / see). Wide
+  // target — it's the primary control and session dots are usually absent (pty).
   mic = new Label(null, {
     active: true,
     Behavior: MicBehavior,
-    style: styleTab,
-    string: 'mic',
-    right: 8,
-    width: 40,
-    height: 24,
+    style: styleMic,
+    string: 'MIC · pty only',
+    right: 6,
+    width: 240,
+    height: 40,
+    skin: fill(COLORS.panel),
   });
   return new Row(null, {
     left: 0,
     right: 0,
-    height: 24,
+    height: 44,
     contents: [dots, new Content(null, { left: 0, right: 0 }), mic],
   });
 }
@@ -271,7 +314,8 @@ export function render(frame: HudFrame): void {
 
   renderCenter(frame);
   renderDots(frame);
-  mic.state = frame.backend === 'pty' ? 1 : 0; // dim when mic is unavailable
+  micEnabled = frame.backend === 'pty';
+  if (!micPressed) paintMic(); // don't stomp the red "listening" state mid-hold
 }
 
 /** Rebuild the center: a permission prompt (with approve/reject) or the state. */

@@ -29,6 +29,10 @@ trace('orb: main start\n');
   trace(`orb: touch-setup device=${!!g.device} sensor.Touch=${!!(g.device?.sensor?.Touch)}\n`);
 }
 
+// TOUCH CALIBRATION lives in the SDK target driver (M5StackCoreS3Touch.js) — the
+// app can't correct it (driver prototype + mc/config are both frozen in ROM).
+// See firmware/m5-cores3/SETUP.md "touch calibration".
+
 let latest: HudFrame | undefined;
 
 // Shown before the first frame arrives and whenever the link is offline, so the

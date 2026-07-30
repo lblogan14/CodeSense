@@ -232,3 +232,56 @@ mcconfig -d -m -p esp32/m5stack_cores3     :: rebuild + reflash + xsbug traces
 Keep the PC-side daemon + bridge running; you only reflash the orb when you
 change firmware. Change WiFi/bridge config any time by editing `manifest.json`
 and reflashing.
+
+---
+
+## Touch calibration (per-unit) — edits the SDK target driver
+
+**Symptom:** taps land off the controls — you press above/below/left of a
+button to hit it, and part of the screen (often the right side) is a dead zone.
+
+**Cause:** the Moddable `m5stack_cores3` target's touch driver forwards **raw**
+FT6x06 coordinates straight to Piu. Its `manifest.json` declares
+`ft6206: { width, height, flipX, flipY, fitX, fitY }`, but the driver
+(`$MODDABLE/modules/drivers/sensors/ft6206/ft6206_async.js`) **never applies the
+fit/scale** — so on some units the raw coordinate space doesn't match the
+320×240 display (scaled + offset, and it drifts across the panel).
+
+**Why it can't be fixed from our firmware:** the touch driver's prototype and
+`mc/config` are both **frozen in ROM** (preloaded), so the app can't patch
+`sample()` or set `config.Touch` at runtime (you'll get `set sample: not
+writable` / `set Touch: not extensible`). The touch→Piu poll is in C
+(`setup/piu.js` → `piuView.c`), so there's no JS hook either.
+
+**Fix (what we do):** correct the coordinates in the SDK target driver's
+`sample()`, in
+`$MODDABLE/build/devices/esp32/targets/m5stack_cores3/M5StackCoreS3Touch.js`.
+After `const points = super.sample();` and the virtual-button block, before
+`return points;`, remap each point into display space:
+
+```js
+// CodeSense touch calibration — remap raw FT6x06 coords into 320x240 display
+// space. Per-unit: re-tune the two offsets + two scales if taps land off.
+if (points) {
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const x = Math.round((p.x + 11) / 1.185);   // X: pull the right side back on-screen
+    const y = Math.round((p.y - 32) / 0.90);    // Y: less drift toward the bottom
+    p.x = x < 0 ? 0 : x > 319 ? 319 : x;
+    p.y = y < 0 ? 0 : y > 239 ? 239 : y;
+  }
+}
+```
+
+**How to tune per unit** (`corrected = (raw − offset) / scale`, clamped):
+- Taps land **too low / press above** → decrease the **Y offset** (or raise the Y scale).
+- Taps land **too high / press below** → increase the Y offset.
+- The **right side is dead** (touches clamp past the controls) → the X is
+  **over-expanding**; raise the **X scale** (and re-anchor the X offset so the
+  left edge stays put). A dead zone that grows toward one edge is a *scale*
+  problem; a uniform miss is an *offset* problem.
+
+> ⚠️ This lives in the **Moddable SDK**, not the CodeSense repo, so it's **not
+> committed** and must be re-applied if you reinstall/update the SDK. It's a
+> candidate to upstream to Moddable (make the driver honor its own fit config).
+> The constants above are for one specific CoreS3; yours may differ slightly.
