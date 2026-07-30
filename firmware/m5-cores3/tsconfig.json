@@ -1,0 +1,18 @@
+{
+  "//": "Editor/IntelliSense only. Moddable transpiles the TS itself via mcconfig; nothing here is emitted or used at build time.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "paths": {
+      "wire": ["../../packages/addon-m5/src/wire.ts"],
+      "framing": ["../../packages/addon-m5/src/framing.ts"],
+      "ui": ["./ui.ts"],
+      "links": ["./links.ts"]
+    }
+  },
+  "include": ["*.ts", "moddable.d.ts"]
+}

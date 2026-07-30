@@ -1,0 +1,345 @@
+/**
+ * Device links for the CoreS3 orb:
+ *   - DemoLink   — on-device state cycle, no host (config.transport = "demo").
+ *   - SerialLink — wired over USB-CDC (TODO on this board).
+ *
+ * BridgeLink (WiFi + WebSocket) is preserved in bridgelink.wip.ts — re-enabling
+ * the network stack currently boot-crashes at XS prepare time (see SETUP.md
+ * "WiFi transport: known blocker"), so it's kept out of the compiled graph.
+ *
+ * Wire types come from the shared `wire` module (defined once, with the bridge).
+ * This module is named `links`, NOT `net` — `net` is a preloaded Moddable
+ * builtin and collides (a duplicate net.xsb aborts XS at prepare time).
+ */
+import Timer from 'timer';
+import Time from 'time';
+import { Client } from 'websocket';
+import WiFi from 'embedded:network/interface/wifi';
+import config from 'mc/config';
+import type { DeviceEvent, HudFrame, WireAgentState } from 'wire';
+
+trace('links: LOADING\n');
+
+interface BridgeCfg {
+  bridge: { host: string; port: number; token: string };
+}
+const cfg = config as unknown as BridgeCfg;
+const RECONNECT_MS = 2000;
+// The bridge sends a keepalive HudFrame every few seconds, so a receive gap
+// means the socket is dead (WiFi drop / half-open / bridge gone) even though
+// Moddable's Client hasn't noticed — no ws ping needed (its pong is unmasked
+// and would be rejected; see wsTransport.ts).
+const RX_STALE_MS = 13000;
+const WATCHDOG_MS = 5000;
+
+export type FrameHandler = (frame: HudFrame) => void;
+export type StatusHandler = (online: boolean) => void;
+
+/** Common shape for every device link. */
+export interface Link {
+  start(): void;
+  send(ev: DeviceEvent): void;
+}
+
+/**
+ * WiFi bridge link — WebSocket ONLY. WiFi association is handled by Moddable's
+ * `setup/network` preload (it reads config.ssid/password and uses the ECMA-419
+ * WiFi driver). We deliberately do NOT import the legacy `wifi` module — loading
+ * both WiFi drivers is what boot-crashed the network stack at XS prepare. We
+ * just retry the WebSocket to the bridge until WiFi is up and it's reachable.
+ */
+export class BridgeLink implements Link {
+  private ws: Client | undefined;
+  private online = false;
+  private generation = 0; // bumped on every (re)connect to fence stale callbacks
+  private reconnectTimer: unknown;
+  private lastRxTicks = 0;
+  private gotFirstFrame = false;
+
+  constructor(
+    private readonly onFrame: FrameHandler,
+    private readonly onStatus: StatusHandler,
+  ) {}
+
+  start(): void {
+    trace('bridge: will connect once WiFi is up\n');
+    this.connectWs();
+    // Receive-watchdog: a gap in the bridge's keepalive frames means the socket
+    // is dead even though Moddable's Client hasn't noticed — force a reconnect.
+    Timer.repeat(() => {
+      if (!this.online || !this.gotFirstFrame) return;
+      if (Time.ticks - this.lastRxTicks > RX_STALE_MS) {
+        trace('bridge: rx stale — reconnecting\n');
+        this.reconnect();
+      }
+    }, WATCHDOG_MS);
+  }
+
+  send(ev: DeviceEvent): void {
+    if (!this.ws || !this.online) return;
+    // A failed write must not tear down the link (a phantom-tap burst could
+    // otherwise overflow the send buffer and drop the socket).
+    try {
+      this.ws.write(JSON.stringify(ev));
+    } catch (e) {
+      trace(`bridge: write failed ${e}\n`);
+    }
+  }
+
+  /** WiFi dropped: the socket is dead even if the Client hasn't noticed. Tear it
+   *  down and wait for {@link onWifiUp}. */
+  onWifiDown(): void {
+    this.closeWs();
+    this.setOnline(false);
+    this.clearReconnect();
+  }
+
+  /** WiFi came back: reconnect now instead of waiting for a retry tick. */
+  onWifiUp(): void {
+    if (this.ws) return;
+    this.clearReconnect();
+    this.connectWs();
+  }
+
+  private reconnect(): void {
+    this.closeWs();
+    this.setOnline(false);
+    this.scheduleReconnect();
+  }
+
+  private closeWs(): void {
+    this.generation++; // supersede any in-flight callbacks from the old Client
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        /* ignore */
+      }
+      this.ws = undefined;
+    }
+  }
+
+  private clearReconnect(): void {
+    if (this.reconnectTimer) {
+      Timer.clear(this.reconnectTimer as never);
+      this.reconnectTimer = undefined;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) return; // at most one pending attempt
+    this.reconnectTimer = Timer.set(() => {
+      this.reconnectTimer = undefined;
+      this.connectWs();
+    }, RECONNECT_MS);
+  }
+
+  private connectWs(): void {
+    this.closeWs(); // never hold two sockets (the old "2 total" phantom)
+    const myGen = this.generation;
+    const { host, port, token } = cfg.bridge;
+    try {
+      const ws = new Client({ host, port, path: '/' });
+      this.ws = ws;
+      ws.callback = (message: number, value?: unknown): void => {
+        if (myGen !== this.generation) return; // superseded Client — drop its events
+        switch (message) {
+          case Client.handshake:
+            this.lastRxTicks = Time.ticks;
+            this.setOnline(true);
+            trace('bridge: connected\n');
+            if (token) this.send({ t: 'hello', token });
+            break;
+          case Client.receive:
+            this.lastRxTicks = Time.ticks;
+            this.gotFirstFrame = true;
+            this.onReceive(value as string);
+            break;
+          case Client.disconnect:
+            this.setOnline(false);
+            this.ws = undefined;
+            this.scheduleReconnect();
+            break;
+        }
+      };
+    } catch {
+      // WiFi not up yet (no IP) — retry
+      this.scheduleReconnect();
+    }
+  }
+
+  private onReceive(raw: string): void {
+    let frame: HudFrame | undefined;
+    try {
+      frame = JSON.parse(raw) as HudFrame;
+    } catch {
+      return;
+    }
+    if (frame && frame.t === 'hud') this.onFrame(frame);
+  }
+
+  private setOnline(v: boolean): void {
+    if (this.online === v) return;
+    this.online = v;
+    this.onStatus(v);
+  }
+}
+
+/**
+ * Keeps WiFi associated so a dropped link self-heals.
+ *
+ * Moddable's `setup/network` connects ONCE at boot and then `close()`s its WiFi
+ * monitor — so when the link later drops, nothing re-associates and the orb goes
+ * dark until a manual reboot. This monitor stays alive for the life of the app
+ * and re-issues `connect()` on every disconnect.
+ *
+ * It uses the SAME ECMA-419 driver `setup/network` uses (the C side keeps a list
+ * of WiFi objects on one shared radio, so a second monitor is safe). Do NOT add
+ * the legacy `wifi` module alongside it — loading two WiFi *drivers* is what
+ * boot-crashed XS prepare (see SETUP.md).
+ */
+export class WifiWatch {
+  private w: { connect(options: object): void } | undefined;
+  private readonly opts: object;
+  private retry: unknown;
+
+  constructor(
+    private readonly onUp: () => void,
+    private readonly onDown: () => void,
+  ) {
+    const c = config as { ssid?: string; password?: string };
+    this.opts = c.password ? { SSID: c.ssid, password: c.password, secure: true } : { SSID: c.ssid };
+  }
+
+  start(): void {
+    const self = this;
+    try {
+      this.w = new WiFi({
+        onChanged(this: { connection: number; address?: string }): void {
+          const c = this.connection;
+          if (c >= 500) {
+            trace(`wifi: up (${this.address ?? '?'})\n`);
+            self.clearRetry();
+            self.onUp();
+          } else if (c <= 200) {
+            trace('wifi: dropped — re-associating\n');
+            self.onDown();
+            self.scheduleReconnect();
+          }
+          // 300 (connecting) / 400 (associated, no IP yet): transient, ignore.
+        },
+      });
+      trace('wifi: watch armed\n');
+    } catch (e) {
+      trace(`wifi: watch init failed: ${e}\n`);
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.retry) return; // at most one pending attempt
+    this.retry = Timer.set(() => {
+      this.retry = undefined;
+      try {
+        this.w?.connect(this.opts);
+      } catch (e) {
+        trace(`wifi: reconnect err ${e}\n`);
+        this.scheduleReconnect();
+      }
+    }, RECONNECT_MS);
+  }
+
+  private clearRetry(): void {
+    if (this.retry) {
+      Timer.clear(this.retry as never);
+      this.retry = undefined;
+    }
+  }
+}
+
+/**
+ * Wired serial link (P2). NOT YET IMPLEMENTED on the CoreS3.
+ *
+ * The CoreS3's USB-C is the ESP32-S3 USB-Serial-JTAG (the COM port used for
+ * flashing), which Moddable's `embedded:io/serial` does not drive — that module
+ * is a hardware UART on GPIO pins. A wired data link therefore needs EITHER a
+ * USB-UART adapter on the Grove/UART pins, OR custom USB-Serial-JTAG code.
+ * Until then this stays offline instead of crashing the app. See SETUP.md.
+ */
+export class SerialLink implements Link {
+  constructor(
+    private readonly onFrame: FrameHandler,
+    private readonly onStatus: StatusHandler,
+  ) {}
+
+  start(): void {
+    trace('serial: wired link not implemented on CoreS3 USB-C (see SETUP.md)\n');
+    this.onStatus(false);
+  }
+
+  send(_ev: DeviceEvent): void {
+    /* no-op until the wired link is implemented */
+  }
+}
+
+/**
+ * On-device demo link — no host needed. Cycles the agent states on a timer so
+ * the HUD (colors, fonts, tabs, animation) can be validated on the real screen.
+ * A tap jumps to the next state and pauses the auto-cycle (unmistakable touch
+ * feedback). Select with `config.transport = "demo"`.
+ */
+export class DemoLink implements Link {
+  private i = 0;
+  private timer: unknown;
+
+  constructor(
+    private readonly onFrame: FrameHandler,
+    private readonly onStatus: StatusHandler,
+  ) {}
+
+  start(): void {
+    this.onStatus(true);
+    this.tick();
+    this.schedule(2600);
+  }
+
+  send(ev: DeviceEvent): void {
+    // A tap jumps to the next state NOW and pauses the auto-cycle ~5s, so the
+    // touch is unmistakable — the cycling visibly stops when you touch.
+    trace(`orb: demo TAP (${ev.t}) -> jump + pause\n`);
+    this.tick();
+    this.schedule(5000);
+  }
+
+  private schedule(ms: number): void {
+    if (this.timer) Timer.clear(this.timer as never);
+    this.timer = Timer.set(() => {
+      this.tick();
+      this.schedule(2600);
+    }, ms);
+  }
+
+  private tick(): void {
+    const ring: Array<{ state: WireAgentState; hex: string; perm?: { tool: string; detail: string } }> = [
+      { state: 'idle', hex: '#3E9BFF' },
+      { state: 'thinking', hex: '#9D7CFF' },
+      { state: 'permission', hex: '#FFB020', perm: { tool: 'Bash', detail: 'rm -rf build/' } },
+      { state: 'done', hex: '#2FD48A' },
+      { state: 'error', hex: '#FF5C5C' },
+    ];
+    const s = ring[this.i % ring.length]!;
+    this.i++;
+    trace(`orb: demo ${s.state}\n`);
+    this.onFrame({
+      t: 'hud',
+      state: s.state,
+      hex: s.hex,
+      mode: 'AGENT',
+      needsYou: s.state === 'permission',
+      backend: 'pty',
+      perm: s.perm,
+      sessions: [],
+      presets: [],
+      seq: this.i,
+    });
+  }
+}

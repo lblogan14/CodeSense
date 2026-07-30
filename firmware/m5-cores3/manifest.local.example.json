@@ -1,0 +1,15 @@
+{
+  "//": "Copy this file to manifest.local.json and fill in your values. manifest.local.json is gitignored so your WiFi credentials are never committed.",
+  "config": {
+    "wifi": {
+      "ssid": "YOUR_2.4GHZ_WIFI_SSID",
+      "password": "YOUR_WIFI_PASSWORD"
+    },
+    "bridge": {
+      "//": "the machine running the codesense-m5 bridge on your LAN",
+      "host": "192.168.1.50",
+      "port": 3838,
+      "token": ""
+    }
+  }
+}

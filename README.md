@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
-    <img alt="CodeSense — your DualSense is a command center for Claude Code" src="assets/banner-dark.svg" width="880">
+    <img alt="CodeSense — turn hardware you own into a command center for Claude Code" src="assets/banner-dark.svg" width="880">
   </picture>
 </p>
 
@@ -13,157 +13,83 @@
   <img alt="license" src="https://img.shields.io/badge/license-MIT-FFB020?style=flat-square">
 </p>
 
-**CodeSense** turns a stock PS5 DualSense controller into a tactile controller *and* live status display for [Claude Code](https://claude.com/claude-code). Buttons drive the agent; the agent drives the lightbar, player LEDs, haptics, and adaptive triggers back — so you *feel* the moment your agent needs you and approve it with a squeeze, without breaking flow.
+**CodeSense** turns hardware you already own into a **tactile controller *and* live status display for [Claude Code](https://claude.com/claude-code)**. The agent's state drives lights, haptics, and screens so you *feel* the moment it needs you; your buttons and taps drive the agent back — approve a tool with a squeeze or a tap, talk to it with push‑to‑talk, switch modes, all without breaking flow.
 
-<p align="center">
-  <img alt="CodeSense — the lightbar cycling through agent states" src="docs/assets/demo.gif" width="720">
-  <br><em>the lightbar is the agent: blue idle → purple thinking → amber "needs you" → green done</em>
-</p>
+It's built to be **hardware‑agnostic**: one daemon speaks a small, normalized protocol, and each device is a thin, decoupled adapter on top. A PS5 controller and a touchscreen dev kit are the first two — adding a third is writing an adapter, not touching the core.
 
-> OpenAI shipped a **$230 macro pad** (Codex Micro) whose best-liked trick is a row of RGB keys showing agent status. A **$70 DualSense you already own** has more of everything — RGB lightbar, 5 player LEDs, two sticks, analog triggers with *programmable resistance*, a touchpad, haptics — and CodeSense uses all of it. Open source, cross-platform, terminal-native, and it does force-feedback approval a macro pad physically can't.
+> OpenAI shipped a **$230 macro pad** (Codex Micro) whose best‑liked trick is a row of RGB keys showing agent status. CodeSense is the open, cross‑platform, terminal‑native answer — and it runs on hardware you probably *already own*, doing things a status‑light macro pad physically can't: force‑feedback approval, a full touch UI, push‑to‑talk.
 
-## △ the signature interaction
+## pick your hardware
 
-When Claude asks for permission to run a tool, the lightbar pulses **amber**, the pad double-taps your palms, and **R2 becomes a weighted trigger**:
-
-- **feather the pull** and release → *approve once*
-- **pull all the way through the resistance** → *always allow this tool*
-- **▢** → show what you're approving (the actual command, plus Ctrl+E explanation)
-- **◯** → reject
-
-Approval stops being a reflexive `y` keystroke and becomes a deliberate physical act — with scope selected by pull depth. The dashboard shows the exact command being approved, and **destructive-looking commands** (`rm -rf`, force-push, `reset --hard`…) announce themselves with a sharper double-buzz so risky approvals *feel* different.
-
-## ◯ what the lightbar tells you
-
-| state | lightbar | haptics |
+| device | what it gives you | guide |
 |---|---|---|
-| idle | calm blue, low glow | — |
-| thinking / tool running | purple, 2.4 s breathing | — |
-| **waiting for you** | amber, pulse (escalates) | double-tap, escalating |
-| done | green fades, then back to idle | soft pulse |
-| error | red flash ×2, then solid | sharp buzz |
+| 🎮 **PS5 DualSense** (~$70, or one you own) | RGB lightbar + 5 player LEDs as agent status, **analog‑trigger approval with programmable resistance**, haptics, sticks, touchpad, push‑to‑talk | **[README‑DUALSENSE.md](README-DUALSENSE.md)** |
+| ◐ **M5Stack CoreS3** (~$50 ESP‑S3 kit) | a 2″ **touchscreen status orb** — agent state *is* the screen, with tap‑to‑approve, mode tabs, and hold‑to‑talk on the glass | **[README‑CORES3.md](README-CORES3.md)** |
 
-Glance at the pad from across the room and know whether your agent needs you. And if you look away, it **escalates**: the amber pulse and haptic tighten and strengthen the longer a permission goes unanswered — so you never miss it, without the fixed idle timer that Claude Code users complain about. Tap **R3** any time to replay the current status as a haptic + LED burst. After minutes of idle the lightbar quietly dims.
+Both are peers on the same daemon and share none of each other's code — deleting one leaves the other untouched.
 
-Beyond the lightbar: **player LEDs count live subagents** (more lights = more agents working under Claude), a **haptic tap** fires when a background task or subagent finishes, mode changes flash the LEDs so you know where you are, and the **reasoning dial flashes brightness by effort level** — dim for `/effort low`, blinding for `max`.
+## the idea, in one loop
 
-## 🎙 talk to your agent
+```
+        ┌─────────────── your hardware (DualSense · CoreS3 · …) ───────────────┐
+input → │  buttons / triggers / touch  →  DeviceEvent  ───────────────┐        │
+        └─────────────────────────────────────────────────────────── │ ───────┘
+                                                                       ▼
+                                                          codesense daemon (TypeScript)
+                                                        mapping engine · agent state machine
+                                                        pty-wrapped `claude`  OR  Agent SDK
+                                                                       │
+        ┌───────────────────────────────────────────────────────────── │ ───────┐
+output← │  lightbar / LEDs / haptics / triggers / screen  ←  FeedbackFrame        │
+        └──────────────────────────────────────────────────────────────────────┘
+                                        ↕  web dashboard (ws, localhost:3737)
+```
 
-Hold **L2** and speak — CodeSense streams key-repeat into Claude Code's native `/voice` dictation, so the trigger is a true push-to-talk. Release to drop the transcript into the input, then edit it without touching the keyboard: **◯ backspace · ◯-hold delete word · △-hold clear line · L1/R1 word jumps · L1+R1+▢ undo**. Toggle dictation with the **mute button** (where else?).
+- **State comes from Claude Code hooks, never screen‑scraping.** Hook events → the agent state machine → device feedback.
+- **Two backends, one contract.** `pty` wraps your normal `claude` session unchanged; `sdk` owns up to 4 sessions in‑process. Both emit the same events and consume the same actions.
+- **Adapters are decoupled.** The DualSense talks byte‑level HID; the CoreS3 is a separate WebSocket client (a bridge + firmware). Neither knows about the other.
 
-## ✕ quickstart
+## quickstart
+
+Install and wire up Claude Code hooks once:
 
 ```powershell
-# install from npm (the `codesense` command lands on your PATH):
 npm install -g @binliu14/code-sense
-
-# ...or from source:
-#   pnpm install && pnpm build
-#   pnpm --filter @binliu14/code-sense bundle && npm install -g ./packages/cli
-
-# wire Claude Code hooks (they feed agent state to the controller)
 codesense hooks install
-
-# check your setup — controller connected over USB or Bluetooth
-codesense doctor
-codesense test        # lightbar/LED/rumble/trigger hardware check
-
-# go — from ANY project directory
-cd c:\path\to\your\project
-codesense start
 ```
 
-On Linux, install the udev rule first — see [docs/platforms.md](docs/platforms.md). macOS and Linux support is implemented but lightly tested — reports welcome.
+Then follow your device's guide:
 
-`codesense start` wraps `claude` in a pseudo-terminal: **your normal Claude Code session, unchanged**, except your controller now works — and the pad shows agent state. The web dashboard is served at [`http://localhost:3737`](http://localhost:3737).
+- **DualSense** → [README‑DUALSENSE.md](README-DUALSENSE.md) — `codesense start`, and the pad comes alive.
+- **CoreS3 orb** → [README‑CORES3.md](README-CORES3.md) — flash the firmware, then `pnpm start` + `pnpm orb`.
 
-No controller handy? `codesense start --mock` gives you a virtual pad in the dashboard.
+No hardware yet? `codesense start --mock` gives a virtual DualSense in the dashboard, and the CoreS3 has a browser emulator (`pnpm orb:emulator`).
 
-### multi-session command center
+## how it's built
 
-```powershell
-codesense start --backend sdk
-```
+A pnpm monorepo of TypeScript packages plus a Vite/React dashboard:
 
-The SDK backend owns up to **4 Claude sessions** mapped to the player LEDs. **L1/R1** switch the active session, the lightbar tracks the session you're on, and any session that needs permission **identifies itself**: it taps out its slot number on the haptics (3 taps = session 3) and briefly peeks its color on the lightbar — even while you're focused on another agent, and it re-nudges on an escalating cadence until you deal with it. Prompts, live transcripts, and **per-session cost** live in the dashboard.
+- **`@codesense/core`** — no I/O: agent state machine, mapping engine (modes · chords · gestures · analog‑R2 approval), zod profiles, feedback renderer.
+- **`@codesense/hid`** — byte‑level DualSense protocol (USB + Bluetooth), hotplug, mock device.
+- **`@codesense/backend-pty`** — ConPTY wrapper around `claude` + Claude Code hooks tailer.
+- **`@codesense/backend-sdk`** — daemon‑owned sessions via `@anthropic-ai/claude-agent-sdk`; permissions resolve through your hardware.
+- **`@codesense/cli`** — the `codesense` command (`start · doctor · test · hooks · profiles`) and the daemon.
+- **`@codesense/dashboard`** — live instrumentation served at `localhost:3737`.
+- **`@codesense/addon-m5`** + **`firmware/m5-cores3`** — the CoreS3 orb: a decoupled bridge + Moddable/TypeScript firmware.
 
-## ▢ default mapping (AGENT mode)
-
-| control | action |
-|---|---|
-| ✕ cross | accept / approve default |
-| ◯ tap | escape / interrupt |
-| **◯ hold** | **rewind — open the checkpoint menu** (Esc Esc), restore with d-pad + ✕ |
-| △ triangle | cycle permission mode (plan / accept-edits) |
-| ▢ square | command palette · during a permission dialog: explain the command (Ctrl+E) |
-| d-pad | menus & history |
-| L1 / R1 | previous / next session |
-| **R2 (analog)** | **approve permission — pull depth = scope** |
-| **L2 (hold)** | **push-to-talk** — streams key-repeat into Claude Code's `/voice hold` dictation |
-| left stick | scroll |
-| right stick ↑↓ | **reasoning dial** — steps `/effort low → max`; lightbar brightness shows the level |
-| **R3 hold + stick flick** | **radial menu** — ↑ `/code-review` · → `/compact` · ↓ `/usage` · ← `/diff` |
-| R3 tap | replay status (haptic + LED) |
-| create | `/copy` — copy last response |
-| touchpad swipe → | `/compact` |
-| touchpad swipe ← | type `/clear` (✕ to confirm) |
-| L1+R1+△ chord | `/clear` — deliberate friction |
-| PS | cycle AGENT / NAV / PROMPT modes (LEDs flash 1×/2×/3× to confirm) |
-| mute | toggle voice dictation |
-
-And the pad talks back beyond the lightbar: in terminal mode the **player LEDs show live subagent count** (more lights = more agents working under Claude), and a **haptic tap** fires when a background task or subagent finishes while you're looking elsewhere.
-
-Three modes (**AGENT** / **NAV** / **PROMPT**) rebind every control — see the dashboard's mapping explorer, or edit `profiles/default.json` (validated with zod, hot-applied from the dashboard's profile editor).
-
-## live dashboard
-
-Served by the daemon at `localhost:3737`: a live mirror of the pad, the agent-state display, the multi-session grid with per-session cost, a command palette, and a hot-applied profile editor. Works even without hardware (`codesense start --mock`).
-
-<p align="center">
-  <img alt="CodeSense dashboard" src="docs/assets/dashboard.png" width="820">
-</p>
-
-## how it works
-
-```
-DualSense ⇄ HID (node-hid) ⇄ codesense daemon (TypeScript)
-   ├─ input  → mapping engine (modes · chords · gestures) → keystrokes / actions
-   ├─ v1: node-pty wraps `claude` · Claude Code hooks → events.jsonl → state machine
-   ├─ v2: Agent SDK sessions · in-process canUseTool → R2 approval
-   └─ state → lightbar + player LEDs + haptics + adaptive trigger resistance
-                                        ↕
-                        web dashboard (ws, localhost:3737)
-```
-
-- **`@codesense/hid`** — DualSense protocol: input report parsing, output reports over USB and Bluetooth (0x31 framing + CRC-32, plus the feature-report `0x05` read that kicks the full-rate BT stream), Nielk1-opcode adaptive-trigger effects.
-- **`@codesense/core`** — agent state machine, gesture/mapping engine, zod profiles, feedback renderer.
-- **`@codesense/backend-pty`** — ConPTY wrapper around `claude`, hooks installer + `events.jsonl` tailer.
-- **`@codesense/backend-sdk`** — daemon-owned sessions via `@anthropic-ai/claude-agent-sdk`; permission requests resolve through the controller.
-- **`@codesense/cli`** — `codesense start · doctor · test · hooks · profiles`.
-- **`@codesense/dashboard`** — live controller/agent instrumentation (Vite + React, served by the daemon).
-
-More detail in [docs/architecture.md](docs/architecture.md) and [docs/profiles.md](docs/profiles.md).
-
-## troubleshooting
-
-Run `codesense doctor`. The usual suspects:
-
-- **Steam / DS4Windows fighting over the pad** — Windows HID handles are shared; last writer wins on the lightbar. Disable PlayStation support in Steam Input while CodeSense runs.
-- **Lightbar never changes** — hooks aren't installed (`codesense hooks install`), or your `claude` session predates the install (restart it).
-- **Bluetooth** — works out of the box (USB is still auto-preferred when both are connected; force wired with `--usb-only`). If the lightbar doesn't respond right after pairing, give it ~4 s — output is ignored during the controller's pairing-light animation.
+Architecture and mapping details: [docs/architecture.md](docs/architecture.md) · [docs/profiles.md](docs/profiles.md). Contributor guide: [CLAUDE.md](CLAUDE.md).
 
 ## roadmap
 
-Published on npm as [`@binliu14/code-sense`](https://www.npmjs.com/package/@binliu14/code-sense); USB + Bluetooth verified on hardware. Next up:
+Published on npm as [`@binliu14/code-sense`](https://www.npmjs.com/package/@binliu14/code-sense); DualSense USB + Bluetooth verified on hardware, CoreS3 orb live over WiFi.
 
-- [ ] quota / self-set budget gauge — ambient cost warning on the lightbar
-- [ ] more agent backends: GitHub Copilot CLI (nearly Claude-compatible hooks), opencode, Codex CLI — see [docs/platforms.md](docs/platforms.md)
-- [ ] per-project profiles (`.codesense.json`)
+- [ ] more agent backends: GitHub Copilot CLI, opencode, Codex CLI — see [docs/platforms.md](docs/platforms.md)
+- [ ] per‑project profiles (`.codesense.json`), quota/budget gauge
+- [ ] more hardware adapters — the whole point of the decoupled design
 - [ ] macOS / Linux field testing
-- [ ] DualSense Edge paddles & function buttons
 
-Done recently: analog-R2 approval, escalating attention system, voice push-to-talk, rewind, effort dial, radial menu, per-session cost, Bluetooth.
+Per‑device roadmaps live in [README‑DUALSENSE.md](README-DUALSENSE.md) and [README‑CORES3.md](README-CORES3.md).
 
 ## license & trademarks
 
-MIT. CodeSense is a community project, **not affiliated with, endorsed by, or sponsored by Sony Interactive Entertainment or Anthropic**. "DualSense", "PlayStation", and the △◯✕▢ glyphs are trademarks of Sony Interactive Entertainment. "Claude" is a trademark of Anthropic.
+MIT. CodeSense is a community project, **not affiliated with, endorsed by, or sponsored by Sony Interactive Entertainment, M5Stack, OpenAI, or Anthropic**. "DualSense", "PlayStation", and the △◯✕▢ glyphs are trademarks of Sony Interactive Entertainment. "M5Stack" and "CoreS3" are trademarks of M5Stack. "Claude" is a trademark of Anthropic.

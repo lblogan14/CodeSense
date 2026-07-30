@@ -1,0 +1,47 @@
+{
+  "//": "Moddable SDK manifest for the CodeSense CoreS3 orb.",
+  "//build": "mcconfig -d -m -p esp32/m5stack_cores3   (device on COM3)",
+  "//secrets": "WiFi + bridge host live in manifest.local.json (gitignored). Copy manifest.local.example.json to manifest.local.json and fill it in.",
+  "//net": "websocket manifest pulls in manifest_net (net/socket/sntp + setup/network's ECMA-419 WiFi). We do NOT include the legacy `wifi` module — BridgeLink is websocket-only and lets setup/network own WiFi (loading both WiFi drivers boot-crashed XS prepare).",
+  "include": [
+    "$(MODDABLE)/examples/manifest_base.json",
+    "$(MODDABLE)/examples/manifest_piu.json",
+    "$(MODULES)/network/websocket/manifest.json",
+    "./manifest.local.json"
+  ],
+  "//modules": "our device-link module is 'links', NOT 'net' — 'net' is a preloaded Moddable builtin and collides (duplicate net.xsb → prepare-time XS abort).",
+  "modules": {
+    "main": "./main",
+    "links": "./links",
+    "ui": "./ui",
+    "wire": "../../packages/addon-m5/src/wire",
+    "framing": "../../packages/addon-m5/src/framing"
+  },
+  "config": {
+    "//transport": "set in manifest.local.json: 'wifi' (default) | 'serial' | 'demo'",
+    "startupSound": "",
+    "serial": {
+      "//": "used when transport = 'serial' (orb docked via USB-C)",
+      "baud": 921600
+    }
+  },
+  "resources": {
+    "*-alpha": [
+      "$(MODDABLE)/examples/assets/fonts/OpenSans-Regular-16",
+      "$(MODDABLE)/examples/assets/fonts/OpenSans-Regular-20",
+      "$(MODDABLE)/examples/assets/fonts/OpenSans-Semibold-28"
+    ]
+  },
+  "//creation": "override the CoreS3 target's small fixed XS heap (4928, incremental 0) so the fuller module graph (incl. the network stack) can allocate + grow.",
+  "creation": {
+    "static": 0,
+    "chunk": { "initial": 131072, "incremental": 32768 },
+    "heap": { "initial": 16384, "incremental": 4096 },
+    "stack": 2048
+  },
+  "platforms": {
+    "esp32/m5stack_cores3": {
+      "modules": {}
+    }
+  }
+}
