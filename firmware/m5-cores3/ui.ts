@@ -239,23 +239,34 @@ function actionButton(label: string, color: string, ev: DeviceEvent): Label {
 
 function buildFooter(): Row {
   dots = new Row(null, { left: 8, height: 28, contents: [] });
-  // Big push-to-talk button (a bare label was too small to hit / see). Wide
-  // target — it's the primary control and session dots are usually absent (pty).
+  // Push-to-talk (hold) + Send (tap). After voice dictation the transcript lands
+  // in Claude Code's input; Send submits it (Enter) — a deliberate tap beats
+  // guessing when speech ended.
   mic = new Label(null, {
     active: true,
     Behavior: MicBehavior,
     style: styleMic,
     string: 'MIC · pty only',
-    right: 6,
-    width: 240,
+    width: 176,
     height: 40,
     skin: fill(COLORS.panel),
+  });
+  const sendBtn = new Label({ event: { t: 'send' } } as { event: DeviceEvent }, {
+    active: true,
+    Behavior: TapBehavior,
+    style: styleMic,
+    string: 'SEND',
+    left: 6,
+    right: 6,
+    width: 92,
+    height: 40,
+    skin: fill(COLORS.accent),
   });
   return new Row(null, {
     left: 0,
     right: 0,
     height: 44,
-    contents: [dots, new Content(null, { left: 0, right: 0 }), mic],
+    contents: [dots, new Content(null, { left: 0, right: 0 }), mic, sendBtn],
   });
 }
 

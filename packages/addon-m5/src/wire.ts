@@ -73,6 +73,7 @@ export type DeviceEvent =
   | { t: 'session'; target: number | 'next' | 'prev' }
   | { t: 'preset'; id: string; text?: string }
   | { t: 'voice'; phase: 'pushStart' | 'pushEnd' }
+  | { t: 'send' } // submit the current input (Enter) — e.g. after voice dictation
   | { t: 'palette'; op: 'open' | 'select' | 'confirm' | 'close'; arg?: number | string }
   | { t: 'interrupt' }
   | { t: 'rewind' }

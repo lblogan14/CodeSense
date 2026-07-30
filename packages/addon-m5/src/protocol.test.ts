@@ -53,6 +53,13 @@ test('voice push maps to a voice action', () => {
   });
 });
 
+test('send maps to an Enter keystroke (submit the input)', () => {
+  assert.deepEqual(deviceEventToClientMessage({ t: 'send' }), {
+    type: 'action',
+    action: { type: 'keys', keys: '\r' },
+  });
+});
+
 test('preset with text becomes a prompt; without text it is null', () => {
   assert.deepEqual(deviceEventToClientMessage({ t: 'preset', id: 'tests', text: 'run the tests' }), {
     type: 'prompt',

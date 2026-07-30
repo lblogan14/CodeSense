@@ -70,6 +70,9 @@ export function deviceEventToClientMessage(ev: DeviceEvent): DaemonOutMessage | 
       return ev.text ? { type: 'prompt', text: ev.text } : null;
     case 'voice':
       return { type: 'action', action: { type: 'voice', action: ev.phase } };
+    case 'send':
+      // Submit the current input. On pty this is Enter; sdk ignores keys.
+      return { type: 'action', action: { type: 'keys', keys: '\r' } };
     case 'interrupt':
       return { type: 'action', action: { type: 'interrupt' } };
     case 'rewind':
