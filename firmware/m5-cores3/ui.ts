@@ -248,6 +248,23 @@ function actionButton(label: string, color: string, ev: DeviceEvent): Label {
   });
 }
 
+/** A preset-prompt button — tapping sends the preset id; the bridge resolves
+ *  its bound text and submits it as a prompt. */
+function presetButton(p: { id: string; label: string }): Label {
+  return new Label({ event: { t: 'preset', id: p.id } } as { event: DeviceEvent }, {
+    active: true,
+    Behavior: TapBehavior,
+    style: styleBtn,
+    string: p.label,
+    left: 10,
+    right: 10,
+    top: 3,
+    bottom: 3,
+    height: 34,
+    skin: fill(COLORS.panel),
+  });
+}
+
 function buildFooter(): Row {
   dots = new Row(null, { left: 8, height: 28, contents: [] });
   // Push-to-talk (hold) + Send (tap). After voice dictation the transcript lands
@@ -364,6 +381,14 @@ function renderCenter(frame: HudFrame): void {
     });
     centerBox.add(
       new Column(null, { left: 0, right: 0, top: 0, bottom: 0, contents: [tool, detail, buttons] }),
+    );
+  } else if (frame.mode === 'PROMPT' && frame.presets.length) {
+    // PROMPT mode: a palette of one-tap canned prompts (bridge resolves + sends).
+    centerBox.add(
+      new Column(null, {
+        left: 0, right: 0, top: 4, bottom: 4,
+        contents: frame.presets.slice(0, 4).map(presetButton),
+      }),
     );
   } else {
     centerBox.add(

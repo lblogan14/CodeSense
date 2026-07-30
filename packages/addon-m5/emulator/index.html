@@ -62,6 +62,10 @@
   .ab.once { border-color: rgba(47,212,138,.5); color: #86ecc0; background: rgba(47,212,138,.1); }
   .ab.always { border-color: rgba(62,155,255,.5); color: #bcdcff; background: rgba(62,155,255,.12); }
   .ab.reject { border-color: rgba(255,92,92,.45); color: #ffb3b3; background: rgba(255,92,92,.1); }
+  .ppal { display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 2px 4px; }
+  .pbtn { font-family: var(--mono); font-size: 9px; font-weight: 600; padding: 7px 8px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border-strong); background: var(--bg-elevated); color: var(--text-primary); text-align: center; transition: transform .1s; }
+  .pbtn:active { transform: scale(.96); filter: brightness(1.4); }
   .foot { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-top: 1px solid rgba(255,255,255,.05); }
   .dots { display: flex; gap: 5px; }
   .sdot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.16); cursor: pointer; }
@@ -211,6 +215,12 @@
             + '<button class="ab always" data-approve="always">Always<small>&nbsp;</small></button>'
             + '<button class="ab reject" data-approve="reject">✕ Reject<small>&nbsp;</small></button>'
             + '</div></div>';
+    } else if (f.mode === 'PROMPT' && f.presets && f.presets.length) {
+      html += '<div class="ppal">';
+      f.presets.slice(0, 4).forEach(function (p) {
+        html += '<button class="pbtn" data-preset="' + p.id + '">' + p.label + '</button>';
+      });
+      html += '</div>';
     } else {
       html += '<div class="st"><span class="g"></span>' + String(f.state || '').toUpperCase() + '</div>';
       html += '<div class="sub">' + (SUB[f.state] || '') + '</div>';
@@ -223,6 +233,9 @@
         if (k === 'reject') send({ t: 'reject' });
         else send({ t: 'approve', scope: k });
       });
+    });
+    Array.prototype.forEach.call(body.querySelectorAll('[data-preset]'), function (b) {
+      b.addEventListener('click', function () { send({ t: 'preset', id: b.getAttribute('data-preset') }); });
     });
 
     // session dots (empty for pty)
