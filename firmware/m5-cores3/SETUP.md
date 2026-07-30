@@ -281,7 +281,16 @@ if (points) {
   left edge stays put). A dead zone that grows toward one edge is a *scale*
   problem; a uniform miss is an *offset* problem.
 
-> ⚠️ This lives in the **Moddable SDK**, not the CodeSense repo, so it's **not
-> committed** and must be re-applied if you reinstall/update the SDK. It's a
-> candidate to upstream to Moddable (make the driver honor its own fit config).
-> The constants above are for one specific CoreS3; yours may differ slightly.
+**Recoverable re-apply.** The driver lives in the Moddable SDK, not this repo, so
+it's lost on an SDK reinstall/update. Restore it with one command (idempotent —
+skips if already applied):
+
+```bash
+node firmware/m5-cores3/apply-touch-calibration.mjs   # needs $MODDABLE set
+```
+
+The per-unit constants live at the top of that script (`CAL`) — the source of
+truth — so tuning is version-controlled even though the patched driver isn't.
+
+> ⚠️ The constants are for one specific CoreS3; yours may differ slightly.
+> Candidate to upstream to Moddable (make the driver honor its own fit config).
